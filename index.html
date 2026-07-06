@@ -22,7 +22,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:max
 .tab-btn.active{color:var(--impact);border-bottom-color:var(--impact);}
 .pane{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;}
 .pane.hidden{display:none!important;}
-/* 録画タブ */
 .stage{position:relative;flex:1;min-height:200px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 #video{width:100%;height:100%;object-fit:cover;background:#000;display:block;}
 .stage.empty #video{display:none;}
@@ -115,24 +114,36 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .act-btn.danger{color:var(--danger);border-color:rgba(255,107,94,.35);}
 .sel-del{display:none;}
 .sel-del.show{display:flex;}
-.ana-track{padding:9px 13px max(10px,env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:7px;}
+/* 追跡パネル */
+.ana-track{padding:9px 13px max(10px,env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;}
+.track-mode-row{display:flex;gap:6px;align-items:center;}
+.mode-btn{flex:1;padding:9px 6px;font-size:12px;border-radius:11px;font-weight:600;}
+.mode-btn.active{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.gear-btn{flex:0 0 38px;padding:9px;font-size:16px;border-radius:11px;}
+/* APIパネル */
+.api-panel{background:var(--panel-2);border:1px solid var(--line);border-radius:13px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+.api-panel label{font-size:12px;color:var(--muted);}
+.api-row{display:flex;gap:7px;}
+.api-row input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font-size:13px;font-family:inherit;}
+.api-row input:focus{outline:none;border-color:var(--impact);}
+.api-save{flex:0 0 auto;padding:9px 16px;font-size:13px;border-radius:10px;background:var(--impact);color:#0c1407;border-color:var(--impact);font-weight:700;}
+.api-note{font-size:11px;color:var(--muted);line-height:1.5;}
+.api-ok{font-size:11px;color:var(--impact);}
+/* 追跡ステート */
 .track-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .track-big{background:rgba(184,255,60,.12);color:var(--impact);border:1px solid rgba(184,255,60,.4);padding:11px 18px;border-radius:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;flex:none;}
 .track-big:active{transform:scale(.97);}
-.progress-wrap{background:var(--panel-2);border-radius:999px;height:7px;overflow:hidden;flex:1;}
+.progress-wrap{background:var(--panel-2);border-radius:999px;height:7px;overflow:hidden;flex:1;min-width:80px;}
 .progress-fill{height:100%;background:var(--impact);width:0%;transition:width .4s;border-radius:999px;}
 .prog-txt{font-size:12px;color:var(--muted);font-family:"JetBrains Mono",monospace;}
+.shaft-note{font-size:11px;color:var(--muted);line-height:1.5;}
 .warn{background:rgba(255,107,94,.1);border:1px solid rgba(255,107,94,.4);color:#ffd7d2;border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;margin:10px 14px 0;}
 .hidden{display:none!important;}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">
-    <span class="dot" id="liveDot"></span>
-    Swing Clipper
-    <span class="ver">v1.1</span>
-  </div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v1.2</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -144,30 +155,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div id="compatWarn" class="warn hidden"></div>
   <div class="stage empty" id="stage">
     <video id="video" playsinline muted autoplay></video>
-    <div class="placeholder">
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 6l7-3v15l-7-3"/><circle cx="8.5" cy="13.5" r="6.5"/></svg>
-      <div>三脚にセットして<br><b style="color:var(--ink)">カメラを開始</b>を押してください</div>
-    </div>
+    <div class="placeholder"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 6l7-3v15l-7-3"/><circle cx="8.5" cy="13.5" r="6.5"/></svg><div>三脚にセットして<br><b style="color:var(--ink)">カメラを開始</b>を押してください</div></div>
     <div class="sts" id="status"><span class="sd"></span><span id="statusText">停止中</span><span class="cd" id="cd"></span></div>
     <div class="gauge empty" id="gauge"><div class="fill" id="gaugeFill"></div><div class="mark" id="gaugeMark"></div></div>
     <div class="flash" id="flash"></div>
   </div>
   <div class="controls">
-    <div class="row">
-      <button class="btn-primary" id="startBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>カメラを開始</button>
-      <button class="btn-cap" id="flipBtn" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>切替</button>
-    </div>
-    <div class="row">
-      <button class="btn-cap" id="manualBtn" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></svg>今のスイングを切り出す</button>
-      <button class="btn-stop hidden" id="stopBtn">停止</button>
-    </div>
-    <div class="opts">
-      <div class="toggle on" id="autoToggle"><span class="switch"></span><span>自動検知</span></div>
-      <div class="slider-wrap"><label>感度</label><input type="range" id="sens" min="1" max="10" value="6"><span class="val" id="sensVal">6</span></div>
-    </div>
-    <div class="opts">
-      <div class="slider-wrap"><label>巻き戻し</label><input type="range" id="preroll" min="15" max="38" value="26"><span class="val" id="prerollVal">2.6s</span></div>
-    </div>
+    <div class="row"><button class="btn-primary" id="startBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>カメラを開始</button><button class="btn-cap" id="flipBtn" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>切替</button></div>
+    <div class="row"><button class="btn-cap" id="manualBtn" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></svg>今のスイングを切り出す</button><button class="btn-stop hidden" id="stopBtn">停止</button></div>
+    <div class="opts"><div class="toggle on" id="autoToggle"><span class="switch"></span><span>自動検知</span></div><div class="slider-wrap"><label>感度</label><input type="range" id="sens" min="1" max="10" value="6"><span class="val" id="sensVal">6</span></div></div>
+    <div class="opts"><div class="slider-wrap"><label>巻き戻し</label><input type="range" id="preroll" min="15" max="38" value="26"><span class="val" id="prerollVal">2.6s</span></div></div>
   </div>
   <div class="clips">
     <div class="clips-head"><h2>スイング</h2><span class="count" id="clipCount">0</span></div>
@@ -179,84 +176,50 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 <!-- 分析タブ -->
 <div class="pane hidden" id="pane-ana">
   <div class="ana-upload" id="anaUpload">
-    <div class="u-box" id="dropZone">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" color="var(--muted)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <p style="margin:0;font-size:14px;color:var(--muted)">動画をアップロード</p>
-      <button class="u-btn" id="pickVideoBtn">写真・ファイルから選択</button>
-    </div>
-    <div class="u-note">📷 <b>後方アングル推奨</b>（ゴルファーの後ろ斜め下から撮影）。正面アングルでも利用できますが、ヘッド自動解析の精度は後方の方が高くなります。</div>
+    <div class="u-box" id="dropZone"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" color="var(--muted)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style="margin:0;font-size:14px;color:var(--muted)">動画をアップロード</p><button class="u-btn" id="pickVideoBtn">写真・ファイルから選択</button></div>
+    <div class="u-note">📷 後方 or 側面アングル推奨。ヘッド自動解析はどちらのアングルでも動作します。</div>
   </div>
   <input type="file" id="videoFileInput" accept="video/*" hidden>
-
-  <div class="ana-stage hidden" id="anaStage">
-    <video id="anaVideo" playsinline></video>
-    <canvas id="anaCanvas"></canvas>
-  </div>
-
+  <div class="ana-stage hidden" id="anaStage"><video id="anaVideo" playsinline></video><canvas id="anaCanvas"></canvas></div>
   <div class="ana-playbar hidden" id="anaPlaybar">
-    <div class="seek-row">
-      <input type="range" id="anaSeek" min="0" max="1000" value="0" step="1">
-      <span class="ana-time" id="anaTime">0:00.0</span>
-    </div>
-    <div class="pbtn-row">
-      <button class="play-pause" id="anaPlayBtn">▶</button>
-      <button class="speed-btn active" data-rate="1">1x</button>
-      <button class="speed-btn" data-rate="0.5">1/2</button>
-      <button class="speed-btn" data-rate="0.33">1/3</button>
-      <button class="speed-btn" data-rate="0.2">1/5</button>
-      <button class="speed-btn" data-rate="0.1">1/10</button>
-    </div>
-    <div class="step-row">
-      <span class="step-lbl">送り幅:</span>
-      <button class="step-btn active" data-step="0.1">1/10s</button>
-      <button class="step-btn" data-step="0.2">1/5s</button>
-      <button class="step-btn" data-step="0.333">1/3s</button>
-      <button class="frame-nav" id="prevFrameBtn">◀</button>
-      <button class="frame-nav" id="nextFrameBtn">▶</button>
-    </div>
-    <div class="ios-note" id="iosNote" style="display:none">⚠ iOSは1/5以下が下限になる場合があります</div>
+    <div class="seek-row"><input type="range" id="anaSeek" min="0" max="1000" value="0" step="1"><span class="ana-time" id="anaTime">0:00.0</span></div>
+    <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
+    <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.1">1/10s</button><button class="step-btn" data-step="0.2">1/5s</button><button class="step-btn" data-step="0.333">1/3s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
+    <div class="ios-note hidden" id="iosNote">⚠ iOSは1/5以下が下限になる場合があります</div>
   </div>
-
   <div class="ana-tools hidden" id="anaTools">
-    <div class="tool-group">
-      <button class="tool-btn active" data-tool="cursor" title="選択・編集">↖</button>
-      <button class="tool-btn" data-tool="line" title="直線">╱</button>
-      <button class="tool-btn" data-tool="circle" title="円">○</button>
-    </div>
-    <div class="color-group">
-      <div class="color-dot active" data-color="#ef4444" style="background:#ef4444"></div>
-      <div class="color-dot" data-color="#3b82f6" style="background:#3b82f6"></div>
-      <div class="color-dot" data-color="#22c55e" style="background:#22c55e"></div>
-      <div class="color-dot" data-color="#eab308" style="background:#eab308"></div>
-    </div>
+    <div class="tool-group"><button class="tool-btn active" data-tool="cursor" title="選択・編集">↖</button><button class="tool-btn" data-tool="line" title="直線">╱</button><button class="tool-btn" data-tool="circle" title="円">○</button></div>
+    <div class="color-group"><div class="color-dot active" data-color="#ef4444" style="background:#ef4444"></div><div class="color-dot" data-color="#3b82f6" style="background:#3b82f6"></div><div class="color-dot" data-color="#22c55e" style="background:#22c55e"></div><div class="color-dot" data-color="#eab308" style="background:#eab308"></div></div>
     <div class="ana-spacer"></div>
-    <div class="act-group">
-      <button class="act-btn sel-del danger" id="selDelBtn">✕ 削除</button>
-      <button class="act-btn" id="undoBtn">↩</button>
-      <button class="act-btn danger" id="clearAllBtn">全消去</button>
-      <button class="act-btn" id="changeVideoBtn" style="color:var(--muted)">動画変更</button>
-    </div>
+    <div class="act-group"><button class="act-btn sel-del danger" id="selDelBtn">✕ 削除</button><button class="act-btn" id="undoBtn">↩</button><button class="act-btn danger" id="clearAllBtn">全消去</button><button class="act-btn" id="changeVideoBtn" style="color:var(--muted)">動画変更</button></div>
   </div>
-
   <div class="ana-track hidden" id="anaTrackPanel">
-    <div class="track-state" id="trackIdle">
-      <button class="track-big" id="startTrackBtn">🎯 ヘッドを自動解析</button>
-      <span style="font-size:12px;color:var(--muted)">Claude Vision APIで軌跡を自動描画します</span>
+    <!-- モード切替 -->
+    <div class="track-mode-row">
+      <button class="mode-btn active" id="modeVision">🤖 Claude Vision</button>
+      <button class="mode-btn" id="modeShaft">📐 シャフト検出</button>
+      <button class="gear-btn" id="apiSettingsBtn" title="API設定">⚙</button>
     </div>
-    <div class="track-state hidden" id="trackInit">
-      <span style="font-size:13px;color:var(--impact)">ヘッドの位置をタップ →</span>
-      <button class="act-btn" id="startAnalysisBtn" disabled style="background:var(--impact);color:#0c1407;border-color:var(--impact);font-weight:700">解析開始</button>
-      <button class="act-btn" id="cancelInitBtn" style="color:var(--muted)">キャンセル</button>
+    <!-- APIキー設定 -->
+    <div class="api-panel hidden" id="apiPanel">
+      <label>Anthropic API Key（Claude Vision使用時に必要）</label>
+      <div class="api-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-...">
+        <button class="api-save" id="saveApiKeyBtn">保存</button>
+      </div>
+      <div class="api-note">セッション中のみ保持。ページを閉じると消えます。取得: <a href="https://console.anthropic.com" target="_blank" style="color:var(--impact)">console.anthropic.com</a></div>
+      <div class="api-ok hidden" id="apiOkMsg">✓ APIキーが設定されています</div>
     </div>
-    <div class="track-state hidden" id="trackAnalyzing">
-      <div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
-      <span class="prog-txt" id="progressText">解析中...</span>
-      <button class="act-btn danger" id="cancelAnalysisBtn">中止</button>
-    </div>
-    <div class="track-state hidden" id="trackDone">
-      <button class="track-big" id="reAnalyzeBtn">🔄 再解析</button>
-      <button class="act-btn" id="clearTrackBtn">軌跡クリア</button>
-    </div>
+    <!-- シャフト検出メモ -->
+    <div class="shaft-note hidden" id="shaftNote">📐 輝度差でシャフトラインを検出します。明るい背景に暗いシャフトが映っている環境で有効です。APIキー不要。</div>
+    <!-- ステート: idle -->
+    <div class="track-state" id="trackIdle"><button class="track-big" id="startTrackBtn">🎯 ヘッド軌跡を解析</button><span style="font-size:12px;color:var(--muted)" id="trackModeLabel">Claude Visionで解析</span></div>
+    <!-- ステート: init -->
+    <div class="track-state hidden" id="trackInit"><span style="font-size:13px;color:var(--impact)">動画をシーク →ヘッドをタップ →</span><button class="act-btn" id="startAnalysisBtn" disabled style="background:var(--impact);color:#0c1407;border-color:var(--impact);font-weight:700">解析開始</button><button class="act-btn" id="cancelInitBtn" style="color:var(--muted)">キャンセル</button></div>
+    <!-- ステート: analyzing -->
+    <div class="track-state hidden" id="trackAnalyzing"><div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div><span class="prog-txt" id="progressText">解析中...</span><button class="act-btn danger" id="cancelAnalysisBtn">中止</button></div>
+    <!-- ステート: done -->
+    <div class="track-state hidden" id="trackDone"><button class="track-big" id="reAnalyzeBtn">🔄 再解析</button><button class="act-btn" id="clearTrackBtn">軌跡クリア</button></div>
   </div>
 </div>
 
@@ -264,65 +227,33 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 "use strict";
 const $=id=>document.getElementById(id);
 
-// ===== タブ切替 =====
-document.querySelectorAll(".tab-btn").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));
-    document.querySelectorAll(".pane").forEach(x=>x.classList.add("hidden"));
-    b.classList.add("active");
-    $("pane-"+b.dataset.tab).classList.remove("hidden");
-  };
-});
+// ===== タブ =====
+document.querySelectorAll(".tab-btn").forEach(b=>{b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".pane").forEach(x=>x.classList.add("hidden"));b.classList.add("active");$("pane-"+b.dataset.tab).classList.remove("hidden");};});
 
 // ===== 録画タブ =====
 const TARGET_MAX_DIM=540,BUF_FPS=18,POST_MS=1500,POST_FPS=25,COOLDOWN_MS=1500,MAX_CLIPS=12;
 const els={stage:$("stage"),video:$("video"),status:$("status"),statusText:$("statusText"),cd:$("cd"),gauge:$("gauge"),gaugeFill:$("gaugeFill"),gaugeMark:$("gaugeMark"),flash:$("flash"),startBtn:$("startBtn"),flipBtn:$("flipBtn"),manualBtn:$("manualBtn"),stopBtn:$("stopBtn"),autoToggle:$("autoToggle"),sens:$("sens"),sensVal:$("sensVal"),preroll:$("preroll"),prerollVal:$("prerollVal"),grid:$("grid"),emptyClips:$("emptyClips"),clipCount:$("clipCount"),liveDot:$("liveDot"),compatWarn:$("compatWarn")};
 let stream=null,running=false,facing="environment",recMode="idle",autoDetect=true,cooldownUntil=0,rafId=null;
-const aC=document.createElement("canvas");aC.width=80;aC.height=60;
-const aCtx=aC.getContext("2d",{willReadFrequently:true});
+const aC=document.createElement("canvas");aC.width=80;aC.height=60;const aCtx=aC.getContext("2d",{willReadFrequently:true});
 let prevData=null,motion=0,motionSmooth=0;
 const rC=document.createElement("canvas");const rCtx=rC.getContext("2d");
 let buf=[],bufLen=0,bufHead=0,lastBufT=0,mime="";
 const PREROLL_MS=()=>parseInt(els.preroll.value)*100;
-function checkSupport(){
-  const issues=[];
-  if(!navigator.mediaDevices?.getUserMedia)issues.push("getUserMedia");
-  if(typeof MediaRecorder==="undefined")issues.push("MediaRecorder");
-  if(!document.createElement("canvas").captureStream)issues.push("captureStream");
-  if(issues.length){els.compatWarn.classList.remove("hidden");els.compatWarn.innerHTML="非対応機能：<b>"+issues.join("・")+"</b>。";}
-}
+function checkSupport(){const issues=[];if(!navigator.mediaDevices?.getUserMedia)issues.push("getUserMedia");if(typeof MediaRecorder==="undefined")issues.push("MediaRecorder");if(!document.createElement("canvas").captureStream)issues.push("captureStream");if(issues.length){els.compatWarn.classList.remove("hidden");els.compatWarn.innerHTML="非対応機能：<b>"+issues.join("・")+"</b>";}}
 function pickMime(){const c=["video/mp4","video/mp4;codecs=avc1","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];for(const m of c){if(MediaRecorder.isTypeSupported?.(m))return m;}return"";}
-async function startCamera(){
-  try{
-    if(stream)stream.getTracks().forEach(t=>t.stop());
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:false});
-    els.video.srcObject=stream;await els.video.play();
-    await new Promise(r=>{if(els.video.videoWidth)r();else els.video.onloadedmetadata=()=>r();});
-    setupRec();running=true;recMode="idle";cooldownUntil=0;
-    els.stage.classList.remove("empty");els.gauge.classList.remove("empty");
-    els.liveDot.classList.add("live");els.startBtn.classList.add("hidden");els.stopBtn.classList.remove("hidden");
-    els.flipBtn.disabled=false;els.manualBtn.disabled=false;setRecStatus();recLoop();
-  }catch(e){
-    let h="";
-    if(window.self!==window.top)h="プレビュー枠ではカメラを使えません。HTMLをブラウザで直接開いてください（HTTPS推奨）。";
-    else if(!window.isSecureContext)h="HTTPSが必要です。";
-    else if(e.name==="NotAllowedError")h="カメラが拒否されています。ブラウザ設定で許可してください。";
-    else h=e.message;
-    els.compatWarn.classList.remove("hidden");els.compatWarn.textContent="カメラエラー: "+h;
-  }
-}
+async function startCamera(){try{if(stream)stream.getTracks().forEach(t=>t.stop());stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:false});els.video.srcObject=stream;await els.video.play();await new Promise(r=>{if(els.video.videoWidth)r();else els.video.onloadedmetadata=()=>r();});setupRec();running=true;recMode="idle";cooldownUntil=0;els.stage.classList.remove("empty");els.gauge.classList.remove("empty");els.liveDot.classList.add("live");els.startBtn.classList.add("hidden");els.stopBtn.classList.remove("hidden");els.flipBtn.disabled=false;els.manualBtn.disabled=false;setRecStatus();recLoop();}catch(e){let h="";if(window.self!==window.top)h="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。";else if(!window.isSecureContext)h="HTTPSが必要です。";else if(e.name==="NotAllowedError")h="カメラが拒否されています。";else h=e.message;els.compatWarn.classList.remove("hidden");els.compatWarn.textContent="カメラエラー: "+h;}}
 function stopCamera(){running=false;recMode="idle";if(rafId)cancelAnimationFrame(rafId);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;els.video.srcObject=null;els.stage.classList.add("empty");els.gauge.classList.add("empty");els.liveDot.classList.remove("live");els.startBtn.classList.remove("hidden");els.stopBtn.classList.add("hidden");els.flipBtn.disabled=true;els.manualBtn.disabled=true;setRecStatus();}
 function setupRec(){const vw=els.video.videoWidth,vh=els.video.videoHeight;const sc=Math.min(1,TARGET_MAX_DIM/Math.max(vw,vh));rC.width=Math.round(vw*sc);rC.height=Math.round(vh*sc);const mf=Math.ceil(PREROLL_MS()/1000*BUF_FPS)+4;buf=[];for(let i=0;i<mf;i++){const c=document.createElement("canvas");c.width=rC.width;c.height=rC.height;buf.push({canvas:c,ctx:c.getContext("2d"),t:0});}bufLen=0;bufHead=0;lastBufT=0;prevData=null;}
 function recLoop(){if(!running)return;rafId=requestAnimationFrame(recLoop);if(recMode!=="idle")return;const now=performance.now();aCtx.drawImage(els.video,0,0,80,60);const cur=aCtx.getImageData(0,0,80,60).data;if(prevData){let d=0;for(let i=0;i<cur.length;i+=4)d+=Math.abs(cur[i]-prevData[i]);motion=Math.min(100,(d/(cur.length/4))*2.4);}prevData=cur;motionSmooth=motionSmooth*.55+motion*.45;els.gaugeFill.style.height=motionSmooth+"%";const s=parseInt(els.sens.value),thr=70-s*5.5;els.gaugeMark.style.bottom=thr+"%";if(now-lastBufT>=1000/BUF_FPS){const sl=buf[bufHead];sl.ctx.drawImage(els.video,0,0,rC.width,rC.height);sl.t=now;bufHead=(bufHead+1)%buf.length;bufLen=Math.min(bufLen+1,buf.length);lastBufT=now;}if(autoDetect&&now>cooldownUntil&&motionSmooth>thr)captureClip();}
 function collectPreroll(){const now=performance.now(),hor=now-PREROLL_MS(),out=[];for(let k=0;k<bufLen;k++){const idx=(bufHead-1-k+buf.length*2)%buf.length;const f=buf[idx];if(f.t>=hor)out.push(f);else break;}out.reverse();return out;}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
-async function captureClip(){if(recMode!=="idle"||!running)return;recMode="capturing";setRecStatus();els.flash.classList.remove("on");void els.flash.offsetWidth;els.flash.classList.add("on");const pr=collectPreroll();if(!mime)mime=pickMime();let recorder,chunks=[];try{const rs=rC.captureStream(POST_FPS);recorder=new MediaRecorder(rs,mime?{mimeType:mime}:undefined);}catch(e){alert("録画エラー: "+e.message);recMode="idle";setRecStatus();return;}recorder.ondataavailable=ev=>{if(ev.data&&ev.data.size>0)chunks.push(ev.data);};const done=new Promise(res=>{recorder.onstop=()=>res();});recorder.start();for(const f of pr){rCtx.drawImage(f.canvas,0,0);await wait(1000/BUF_FPS);}const pe=performance.now()+POST_MS;while(performance.now()<pe&&running){rCtx.drawImage(els.video,0,0,rC.width,rC.height);await wait(1000/POST_FPS);}recorder.stop();await done;const type=mime||(chunks[0]&&chunks[0].type)||"video/webm";const blob=new Blob(chunks,{type});addClip(blob,type);cooldownUntil=performance.now()+COOLDOWN_MS;motionSmooth=0;prevData=null;recMode="idle";setRecStatus();}
+async function captureClip(){if(recMode!=="idle"||!running)return;recMode="capturing";setRecStatus();els.flash.classList.remove("on");void els.flash.offsetWidth;els.flash.classList.add("on");const pr=collectPreroll();if(!mime)mime=pickMime();let recorder,chunks=[];try{const rs=rC.captureStream(POST_FPS);recorder=new MediaRecorder(rs,mime?{mimeType:mime}:undefined);}catch(e){alert("録画エラー:"+e.message);recMode="idle";setRecStatus();return;}recorder.ondataavailable=ev=>{if(ev.data&&ev.data.size>0)chunks.push(ev.data);};const done=new Promise(res=>{recorder.onstop=()=>res();});recorder.start();for(const f of pr){rCtx.drawImage(f.canvas,0,0);await wait(1000/BUF_FPS);}const pe=performance.now()+POST_MS;while(performance.now()<pe&&running){rCtx.drawImage(els.video,0,0,rC.width,rC.height);await wait(1000/POST_FPS);}recorder.stop();await done;const type=mime||(chunks[0]&&chunks[0].type)||"video/webm";const blob=new Blob(chunks,{type});addClip(blob,type);cooldownUntil=performance.now()+COOLDOWN_MS;motionSmooth=0;prevData=null;recMode="idle";setRecStatus();}
 let clipSeq=0;
 function addClip(blob,type){clipSeq++;const url=URL.createObjectURL(blob);const ext=type.includes("mp4")?"mp4":"webm";const now=new Date();const pad=x=>String(x).padStart(2,"0");const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;const fname=`swing_${stamp}.${ext}`;const tl=`${pad(now.getHours())}:${pad(now.getMinutes())}`;const sk=Math.round(blob.size/1024);const card=document.createElement("div");card.className="clip";card.innerHTML=`<div class="thumb"><video src="${url}" preload="metadata" playsinline muted></video><div class="play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.4)"/><path d="M10 8l6 4-6 4z" fill="#fff"/></svg></div></div><div class="meta"><span>#${clipSeq}</span><span class="t">${tl}·${sk}KB</span></div><div class="acts"><button class="save">保存</button><button class="analyze">分析</button><button class="del">✕</button></div>`;const v=card.querySelector("video");const pi=card.querySelector(".play");const th=card.querySelector(".thumb");let playing=false;th.onclick=()=>{if(playing){v.pause();v.currentTime=0;pi.style.display="flex";playing=false;}else{v.play();pi.style.display="none";playing=true;}};v.onended=()=>{pi.style.display="flex";playing=false;};card.querySelector(".save").onclick=()=>saveClip(blob,fname,type);card.querySelector(".analyze").onclick=()=>{loadAnaBlob(blob);document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab==="ana"));$("pane-rec").classList.add("hidden");$("pane-ana").classList.remove("hidden");};card.querySelector(".del").onclick=()=>{URL.revokeObjectURL(url);card.remove();refreshClipUI();};els.grid.prepend(card);while(els.grid.children.length>MAX_CLIPS)els.grid.lastElementChild.remove();refreshClipUI();}
 function refreshClipUI(){const n=els.grid.children.length;els.clipCount.textContent=n;els.grid.classList.toggle("hidden",n===0);els.emptyClips.classList.toggle("hidden",n!==0);}
 async function saveClip(blob,fname,type){const file=new File([blob],fname,{type});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname});return;}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
 function setRecStatus(){els.status.classList.remove("armed","rec");if(!running){els.statusText.textContent="停止中";els.cd.textContent="";return;}if(recMode==="capturing"){els.status.classList.add("rec");els.statusText.textContent="切り出し中";els.cd.textContent="";return;}if(autoDetect){els.status.classList.add("armed");els.statusText.textContent="検知待機";}else{els.statusText.textContent="手動モード";}els.cd.textContent="";}
-setInterval(()=>{if(running&&recMode==="idle"){const l=cooldownUntil-performance.now();els.cd.textContent=l>0?(l/1000).toFixed(1)+"s":"";}}  ,120);
+setInterval(()=>{if(running&&recMode==="idle"){const l=cooldownUntil-performance.now();els.cd.textContent=l>0?(l/1000).toFixed(1)+"s":"";}},120);
 els.startBtn.onclick=startCamera;els.stopBtn.onclick=stopCamera;
 els.flipBtn.onclick=async()=>{facing=facing==="environment"?"user":"environment";if(running)await startCamera();};
 els.manualBtn.onclick=()=>{if(running&&recMode==="idle")captureClip();};
@@ -332,111 +263,48 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 
 // ===== 分析タブ =====
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
-
-// ズーム状態
 const zoom={scale:1,tx:0,ty:0};
 const pinch={active:false,startDist:0,startScale:1,startTx:0,startTy:0,midX:0,midY:0};
+const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],drawing:null,selectedIdx:-1,dragHandle:null,trackState:"idle",trackMode:"vision",trackInitPos:null,trackCancelFlag:false,dragging:false,lastNx:0,lastNy:0};
+let stepSize=0.1;
+let apiKey=sessionStorage.getItem("swingApiKey")||"";
+function refreshApiUI(){$("apiOkMsg").classList.toggle("hidden",!apiKey);}
+refreshApiUI();
 
-// アノテーション状態
-const ana={
-  tool:"cursor",color:"#ef4444",
-  trackPoints:[],annotations:[],
-  drawing:null,selectedIdx:-1,dragHandle:null,
-  trackState:"idle",trackInitPos:null,trackCancelFlag:false,
-  dragging:false,lastNx:0,lastNy:0,
-};
-
-let stepSize=0.1; // コマ送り幅(秒)
-
-// ----- 座標系 -----
-function getVideoBaseRect(){
-  const cw=anaCanvas.width,ch=anaCanvas.height;
-  const vw=anaVideo.videoWidth||1,vh=anaVideo.videoHeight||1;
-  const s=Math.min(cw/vw,ch/vh);
-  const w=vw*s,h=vh*s;
-  return{left:(cw-w)/2,top:(ch-h)/2,width:w,height:h};
-}
-function clientToNorm(cx,cy){
-  const rect=anaCanvas.getBoundingClientRect();
-  const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
-  const px=(cx-rect.left)*sx,py=(cy-rect.top)*sy;
-  const bx=(px-zoom.tx)/zoom.scale,by=(py-zoom.ty)/zoom.scale;
-  const b=getVideoBaseRect();
-  return{nx:Math.max(0,Math.min(1,(bx-b.left)/b.width)),ny:Math.max(0,Math.min(1,(by-b.top)/b.height))};
-}
+// ---- 座標系 ----
+function getVideoBaseRect(){const cw=anaCanvas.width,ch=anaCanvas.height;const vw=anaVideo.videoWidth||1,vh=anaVideo.videoHeight||1;const s=Math.min(cw/vw,ch/vh);const w=vw*s,h=vh*s;return{left:(cw-w)/2,top:(ch-h)/2,width:w,height:h};}
+function clientToNorm(cx,cy){const rect=anaCanvas.getBoundingClientRect();const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;const px=(cx-rect.left)*sx,py=(cy-rect.top)*sy;const bx=(px-zoom.tx)/zoom.scale,by=(py-zoom.ty)/zoom.scale;const b=getVideoBaseRect();return{nx:Math.max(0,Math.min(1,(bx-b.left)/b.width)),ny:Math.max(0,Math.min(1,(by-b.top)/b.height))};}
 function normToBase(nx,ny){const b=getVideoBaseRect();return{x:b.left+nx*b.width,y:b.top+ny*b.height};}
-function getTouchDist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.hypot(dx,dy);}
+function getTouchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
 
-// ----- ヒット判定 -----
-function distToSegPx(nx,ny,nx1,ny1,nx2,ny2,b){
-  const px=nx*b.width,py=ny*b.height;
-  const x1=nx1*b.width,y1=ny1*b.height,x2=nx2*b.width,y2=ny2*b.height;
-  const dx=x2-x1,dy=y2-y1;const l2=dx*dx+dy*dy;
-  if(l2===0)return Math.hypot(px-x1,py-y1);
-  const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));
-  return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
-}
-function hitTestAnnotations(nx,ny){
-  const b=getVideoBaseRect();const THR=14;
-  for(let i=ana.annotations.length-1;i>=0;i--){
-    const a=ana.annotations[i];
-    if(a.type==="line"){if(distToSegPx(nx,ny,a.nx1,a.ny1,a.nx2,a.ny2,b)<THR)return i;}
-    else if(a.type==="circle"){const dx=(nx-a.ncx)*b.width,dy=(ny-a.ncy)*b.height;const d=Math.hypot(dx,dy),r=a.nr*b.width;if(d<THR||Math.abs(d-r)<THR)return i;}
-  }
-  return-1;
-}
-function hitTestHandles(nx,ny){
-  if(ana.selectedIdx<0)return null;
-  const a=ana.annotations[ana.selectedIdx];const b=getVideoBaseRect();const THR=16;
-  const hpx=(h,v)=>Math.hypot((nx-h)*b.width,(ny-v)*b.height);
-  if(a.type==="line"){if(hpx(a.nx1,a.ny1)<THR)return"p1";if(hpx(a.nx2,a.ny2)<THR)return"p2";}
-  else if(a.type==="circle"){if(hpx(a.ncx,a.ncy)<THR)return"center";if(hpx(a.ncx+a.nr,a.ncy)<THR)return"rim";}
-  return null;
-}
+// ---- ヒット判定 ----
+function distToSegPx(nx,ny,nx1,ny1,nx2,ny2,b){const px=nx*b.width,py=ny*b.height,x1=nx1*b.width,y1=ny1*b.height,x2=nx2*b.width,y2=ny2*b.height,dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy;if(l2===0)return Math.hypot(px-x1,py-y1);const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));}
+function hitTestAnnotations(nx,ny){const b=getVideoBaseRect(),THR=14;for(let i=ana.annotations.length-1;i>=0;i--){const a=ana.annotations[i];if(a.type==="line"){if(distToSegPx(nx,ny,a.nx1,a.ny1,a.nx2,a.ny2,b)<THR)return i;}else if(a.type==="circle"){const dx=(nx-a.ncx)*b.width,dy=(ny-a.ncy)*b.height,d=Math.hypot(dx,dy),r=a.nr*b.width;if(d<THR||Math.abs(d-r)<THR)return i;}}return -1;}
+function hitTestHandles(nx,ny){if(ana.selectedIdx<0)return null;const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect(),T=16,h=(hx,hy)=>Math.hypot((nx-hx)*b.width,(ny-hy)*b.height);if(a.type==="line"){if(h(a.nx1,a.ny1)<T)return"p1";if(h(a.nx2,a.ny2)<T)return"p2";}else if(a.type==="circle"){if(h(a.ncx,a.ncy)<T)return"center";if(h(a.ncx+a.nr,a.ncy)<T)return"rim";}return null;}
 
-// ----- RAF描画 -----
-function syncCanvas(){const s=$("anaStage");const w=s.clientWidth||1,h=s.clientHeight||1;if(anaCanvas.width!==w||anaCanvas.height!==h){anaCanvas.width=w;anaCanvas.height=h;}}
+// ---- RAF描画 ----
+function syncCanvas(){const s=$("anaStage"),w=s.clientWidth||1,h=s.clientHeight||1;if(anaCanvas.width!==w||anaCanvas.height!==h){anaCanvas.width=w;anaCanvas.height=h;}}
 function startAnaRaf(){
   if(ana.rafId)cancelAnimationFrame(ana.rafId);
   function render(){
-    ana.rafId=requestAnimationFrame(render);
-    syncCanvas();
-    const ctx=anaCtx2;
-    ctx.clearRect(0,0,anaCanvas.width,anaCanvas.height);
-    ctx.save();
-    ctx.translate(zoom.tx,zoom.ty);
-    ctx.scale(zoom.scale,zoom.scale);
-    // 動画フレーム描画
+    ana.rafId=requestAnimationFrame(render);syncCanvas();
+    const ctx=anaCtx2;ctx.clearRect(0,0,anaCanvas.width,anaCanvas.height);
+    ctx.save();ctx.translate(zoom.tx,zoom.ty);ctx.scale(zoom.scale,zoom.scale);
     if(anaVideo.readyState>=2){const b=getVideoBaseRect();ctx.drawImage(anaVideo,b.left,b.top,b.width,b.height);}
     // 軌跡
-    const T=anaVideo.currentTime;
-    const pts=ana.trackPoints.filter(p=>p.t<=T+.001).sort((a,b)=>a.t-b.t);
+    const T=anaVideo.currentTime,pts=ana.trackPoints.filter(p=>p.t<=T+.001).sort((a,b)=>a.t-b.t);
     if(pts.length>=2){ctx.beginPath();const p0=normToBase(pts[0].nx,pts[0].ny);ctx.moveTo(p0.x,p0.y);for(let i=1;i<pts.length;i++){const p=normToBase(pts[i].nx,pts[i].ny);ctx.lineTo(p.x,p.y);}ctx.strokeStyle=ana.color;ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";ctx.shadowColor=ana.color;ctx.shadowBlur=5;ctx.stroke();ctx.shadowBlur=0;}
     for(const p of pts){const{x,y}=normToBase(p.nx,p.ny);ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=ana.color;ctx.fill();}
     // アノテーション
-    for(let i=0;i<ana.annotations.length;i++){
-      const a=ana.annotations[i];
-      ctx.strokeStyle=a.color;ctx.lineWidth=i===ana.selectedIdx?3.5:2.5;ctx.lineCap="round";ctx.shadowColor=a.color;ctx.shadowBlur=3;
-      if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
-      else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}
-      ctx.shadowBlur=0;
-    }
+    for(let i=0;i<ana.annotations.length;i++){const a=ana.annotations[i];ctx.strokeStyle=a.color;ctx.lineWidth=i===ana.selectedIdx?3.5:2.5;ctx.lineCap="round";ctx.shadowColor=a.color;ctx.shadowBlur=3;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=0;}
     // 選択ハンドル
-    if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){
-      const a=ana.annotations[ana.selectedIdx];const b=getVideoBaseRect();
-      ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=1.5;
-      if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
-      else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}
-      ctx.setLineDash([]);
-      const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];
-      for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=2;ctx.stroke();}
-    }
+    if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect();ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=1.5;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=2;ctx.stroke();}}
     // 描画プレビュー
     if(ana.drawing){const d=ana.drawing;ctx.strokeStyle=ana.color;ctx.lineWidth=2.5;ctx.lineCap="round";ctx.setLineDash([6,4]);if(d.type==="line"){const{x:x1,y:y1}=normToBase(d.nx1,d.ny1);const{x:x2,y:y2}=normToBase(d.nx2??d.nx1,d.ny2??d.ny1);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(d.type==="circle"){const{x:cx,y:cy}=normToBase(d.ncx,d.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,(d.nr??0)*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);}
-    // 追跡初期位置マーカー
+    // 追跡initマーカー
     if(ana.trackState==="init"&&ana.trackInitPos){const{x,y}=normToBase(ana.trackInitPos.nx,ana.trackInitPos.ny);ctx.strokeStyle="#b8ff3c";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(x-18,y);ctx.lineTo(x+18,y);ctx.moveTo(x,y-18);ctx.lineTo(x,y+18);ctx.stroke();}
     ctx.restore();
-    // 追跡initヒント（ズーム外・固定位置）
+    // initヒント（固定位置）
     if(ana.trackState==="init"){ctx.fillStyle="rgba(8,12,10,.78)";ctx.fillRect(0,anaCanvas.height-52,anaCanvas.width,52);ctx.fillStyle="#b8ff3c";ctx.font="bold 13px Inter";ctx.textAlign="center";ctx.fillText(ana.trackInitPos?"タップ位置を確認 → 解析開始":"クラブヘッドをタップしてください",anaCanvas.width/2,anaCanvas.height-20);}
     updateAnaTime();
   }
@@ -444,91 +312,70 @@ function startAnaRaf(){
 }
 function updateAnaTime(){if(!isNaN(anaVideo.duration)&&anaVideo.duration>0){$("anaSeek").value=(anaVideo.currentTime/anaVideo.duration)*1000;const m=Math.floor(anaVideo.currentTime/60),s=(anaVideo.currentTime%60).toFixed(1).padStart(4,"0");$("anaTime").textContent=`${m}:${s}`;}}
 
-// ----- 動画ロード -----
+// ---- 動画ロード ----
 function loadAnaBlob(blob){loadAnaSource(URL.createObjectURL(blob));}
 function loadAnaSource(src){
   anaVideo.src=src;anaVideo.load();
   anaVideo.onloadedmetadata=()=>{
     $("anaUpload").classList.add("hidden");
-    $("anaStage").classList.remove("hidden");
-    $("anaPlaybar").classList.remove("hidden");
-    $("anaTools").classList.remove("hidden");
-    $("anaTrackPanel").classList.remove("hidden");
+    ["anaStage","anaPlaybar","anaTools","anaTrackPanel"].forEach(id=>$(id).classList.remove("hidden"));
     ana.trackPoints=[];ana.annotations=[];ana.drawing=null;ana.selectedIdx=-1;ana.trackInitPos=null;
     zoom.scale=1;zoom.tx=0;zoom.ty=0;
     setTrackState("idle");startAnaRaf();updateAnaTime();
-    // iOS note
-    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-    if(isIOS)$("iosNote").style.display="block";
+    if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");
   };
 }
 $("pickVideoBtn").onclick=()=>$("videoFileInput").click();
 $("dropZone").onclick=e=>{if(e.target===$("pickVideoBtn"))return;$("videoFileInput").click();};
 $("videoFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadAnaSource(URL.createObjectURL(f));};
-$("changeVideoBtn").onclick=()=>{
-  if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}
-  anaVideo.pause();anaVideo.src="";
-  ["anaStage","anaPlaybar","anaTools","anaTrackPanel"].forEach(id=>$(id).classList.add("hidden"));
-  $("anaUpload").classList.remove("hidden");
-  $("videoFileInput").value="";$("iosNote").style.display="none";
-};
+$("changeVideoBtn").onclick=()=>{if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}anaVideo.pause();anaVideo.src="";["anaStage","anaPlaybar","anaTools","anaTrackPanel"].forEach(id=>$(id).classList.add("hidden"));$("anaUpload").classList.remove("hidden");$("videoFileInput").value="";$("iosNote").classList.add("hidden");};
 
-// ----- ピンチズーム -----
-anaCanvas.addEventListener("touchstart",e=>{
-  if(e.touches.length===2){e.preventDefault();pinch.active=true;pinch.startDist=getTouchDist(e.touches);pinch.startScale=zoom.scale;pinch.startTx=zoom.tx;pinch.startTy=zoom.ty;const rect=anaCanvas.getBoundingClientRect();const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;pinch.midX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;pinch.midY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;}
-},{passive:false});
+// ---- ピンチズーム（修正版：現在の中点でパン+ズーム）----
+anaCanvas.addEventListener("touchstart",e=>{if(e.touches.length===2){e.preventDefault();pinch.active=true;pinch.startDist=getTouchDist(e.touches);pinch.startScale=zoom.scale;pinch.startTx=zoom.tx;pinch.startTy=zoom.ty;const rect=anaCanvas.getBoundingClientRect();const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;pinch.midX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;pinch.midY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;}},{passive:false});
 anaCanvas.addEventListener("touchmove",e=>{
-  if(pinch.active&&e.touches.length===2){e.preventDefault();const nd=getTouchDist(e.touches);const ns=Math.max(1,Math.min(5,pinch.startScale*(nd/pinch.startDist)));const ratio=ns/pinch.startScale;zoom.tx=pinch.midX-(pinch.midX-pinch.startTx)*ratio;zoom.ty=pinch.midY-(pinch.midY-pinch.startTy)*ratio;zoom.scale=ns;}
+  if(pinch.active&&e.touches.length===2){
+    e.preventDefault();
+    const rect=anaCanvas.getBoundingClientRect();
+    const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
+    // 現在の中点（毎フレーム更新→パンに対応）
+    const curMidX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;
+    const curMidY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;
+    const nd=getTouchDist(e.touches);
+    const ns=Math.max(1,Math.min(5,pinch.startScale*(nd/pinch.startDist)));
+    const ratio=ns/pinch.startScale;
+    // 開始時の中点の下にあった点を現在の中点の下に来るように平行移動
+    zoom.tx=curMidX-(pinch.midX-pinch.startTx)*ratio;
+    zoom.ty=curMidY-(pinch.midY-pinch.startTy)*ratio;
+    zoom.scale=ns;
+  }
 },{passive:false});
 anaCanvas.addEventListener("touchend",e=>{if(e.touches.length<2)pinch.active=false;});
 
-// ----- ポインタイベント（描画・選択） -----
+// ---- ポインタイベント ----
 function getEvtXY(e){return e.touches&&e.touches.length>0?{cx:e.touches[0].clientX,cy:e.touches[0].clientY}:{cx:e.clientX,cy:e.clientY};}
-
 anaCanvas.addEventListener("pointerdown",e=>{
   if(pinch.active)return;e.preventDefault();
   const{cx,cy}=getEvtXY(e);const{nx,ny}=clientToNorm(cx,cy);
   ana.lastNx=nx;ana.lastNy=ny;
-  // 追跡init中はタップで位置セット
   if(ana.trackState==="init"){ana.trackInitPos={nx,ny};$("startAnalysisBtn").disabled=false;return;}
-  if(ana.tool==="cursor"){
-    const handle=hitTestHandles(nx,ny);
-    if(handle){ana.dragHandle=handle;ana.dragging=true;return;}
-    const idx=hitTestAnnotations(nx,ny);
-    if(idx>=0){ana.selectedIdx=idx;updateSelDeleteBtn();ana.dragging=false;return;}
-    ana.selectedIdx=-1;updateSelDeleteBtn();
-  }else if(ana.tool==="line"){ana.drawing={type:"line",nx1:nx,ny1:ny,nx2:nx,ny2:ny};ana.dragging=true;}
+  if(ana.tool==="cursor"){const handle=hitTestHandles(nx,ny);if(handle){ana.dragHandle=handle;ana.dragging=true;return;}const idx=hitTestAnnotations(nx,ny);if(idx>=0){ana.selectedIdx=idx;updateSelDeleteBtn();ana.dragging=false;return;}ana.selectedIdx=-1;updateSelDeleteBtn();}
+  else if(ana.tool==="line"){ana.drawing={type:"line",nx1:nx,ny1:ny,nx2:nx,ny2:ny};ana.dragging=true;}
   else if(ana.tool==="circle"){ana.drawing={type:"circle",ncx:nx,ncy:ny,nr:0};ana.dragging=true;}
 },{passive:false});
-
 anaCanvas.addEventListener("pointermove",e=>{
   if(pinch.active)return;e.preventDefault();
   const{cx,cy}=getEvtXY(e);const{nx,ny}=clientToNorm(cx,cy);
-  if(ana.tool==="cursor"&&ana.dragging&&ana.dragHandle&&ana.selectedIdx>=0){
-    const a=ana.annotations[ana.selectedIdx];const dnx=nx-ana.lastNx,dny=ny-ana.lastNy;
-    if(a.type==="line"){if(ana.dragHandle==="p1"){a.nx1+=dnx;a.ny1+=dny;}else if(ana.dragHandle==="p2"){a.nx2+=dnx;a.ny2+=dny;}}
-    else if(a.type==="circle"){if(ana.dragHandle==="center"){a.ncx+=dnx;a.ncy+=dny;}else if(ana.dragHandle==="rim"){const b=getVideoBaseRect();const dx=(nx-a.ncx)*b.width,dy=(ny-a.ncy)*b.height;a.nr=Math.hypot(dx,dy)/b.width;}}
-  }else if(ana.drawing){
-    if(ana.drawing.type==="line"){ana.drawing.nx2=nx;ana.drawing.ny2=ny;}
-    else if(ana.drawing.type==="circle"){const b=getVideoBaseRect();const dx=(nx-ana.drawing.ncx)*b.width,dy=(ny-ana.drawing.ncy)*b.height;ana.drawing.nr=Math.hypot(dx,dy)/b.width;}
-  }
+  if(ana.tool==="cursor"&&ana.dragging&&ana.dragHandle&&ana.selectedIdx>=0){const a=ana.annotations[ana.selectedIdx],dnx=nx-ana.lastNx,dny=ny-ana.lastNy;if(a.type==="line"){if(ana.dragHandle==="p1"){a.nx1+=dnx;a.ny1+=dny;}else if(ana.dragHandle==="p2"){a.nx2+=dnx;a.ny2+=dny;}}else if(a.type==="circle"){if(ana.dragHandle==="center"){a.ncx+=dnx;a.ncy+=dny;}else if(ana.dragHandle==="rim"){const b=getVideoBaseRect();a.nr=Math.hypot((nx-a.ncx)*b.width,(ny-a.ncy)*b.height)/b.width;}}}
+  else if(ana.drawing){if(ana.drawing.type==="line"){ana.drawing.nx2=nx;ana.drawing.ny2=ny;}else if(ana.drawing.type==="circle"){const b=getVideoBaseRect();ana.drawing.nr=Math.hypot((nx-ana.drawing.ncx)*b.width,(ny-ana.drawing.ncy)*b.height)/b.width;}}
   ana.lastNx=nx;ana.lastNy=ny;
 },{passive:false});
-
 anaCanvas.addEventListener("pointerup",e=>{
-  e.preventDefault();
-  ana.dragging=false;ana.dragHandle=null;
-  if(ana.drawing){
-    const b=getVideoBaseRect();let ok=false;
-    if(ana.drawing.type==="line"){const dx=(ana.drawing.nx2-ana.drawing.nx1)*b.width,dy=(ana.drawing.ny2-ana.drawing.ny1)*b.height;ok=Math.hypot(dx,dy)>6;}
-    else if(ana.drawing.type==="circle")ok=(ana.drawing.nr??0)*b.width>5;
-    if(ok)ana.annotations.push({...ana.drawing,color:ana.color});
-    ana.drawing=null;
-  }
+  e.preventDefault();ana.dragging=false;ana.dragHandle=null;
+  if(ana.drawing){const b=getVideoBaseRect();let ok=false;if(ana.drawing.type==="line"){const dx=(ana.drawing.nx2-ana.drawing.nx1)*b.width,dy=(ana.drawing.ny2-ana.drawing.ny1)*b.height;ok=Math.hypot(dx,dy)>6;}else if(ana.drawing.type==="circle")ok=(ana.drawing.nr??0)*b.width>5;if(ok)ana.annotations.push({...ana.drawing,color:ana.color});ana.drawing=null;}
 },{passive:false});
 anaCanvas.addEventListener("pointercancel",()=>{ana.dragging=false;ana.dragHandle=null;ana.drawing=null;});
 
-// ----- ツール・カラー -----
+// ---- ツール・カラー ----
 document.querySelectorAll(".tool-btn").forEach(b=>{b.onclick=()=>{ana.tool=b.dataset.tool;document.querySelectorAll(".tool-btn").forEach(x=>x.classList.toggle("active",x===b));};});
 document.querySelectorAll(".color-dot").forEach(d=>{d.onclick=()=>{ana.color=d.dataset.color;document.querySelectorAll(".color-dot").forEach(x=>x.classList.toggle("active",x===d));};});
 function updateSelDeleteBtn(){$("selDelBtn").classList.toggle("show",ana.selectedIdx>=0);}
@@ -536,7 +383,7 @@ $("selDelBtn").onclick=()=>{if(ana.selectedIdx>=0){ana.annotations.splice(ana.se
 $("undoBtn").onclick=()=>{if(ana.annotations.length>0)ana.annotations.pop();else if(ana.trackPoints.length>0)ana.trackPoints.pop();};
 $("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をすべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
 
-// ----- 再生コントロール -----
+// ---- 再生コントロール ----
 $("anaPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pause();};
 anaVideo.onplay=()=>$("anaPlayBtn").textContent="⏸";
 anaVideo.onpause=anaVideo.onended=()=>$("anaPlayBtn").textContent="▶";
@@ -546,37 +393,86 @@ document.querySelectorAll(".step-btn").forEach(b=>{b.onclick=()=>{stepSize=parse
 $("prevFrameBtn").onclick=()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);};
 $("nextFrameBtn").onclick=()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;};
 
-// ----- 追跡ステート管理 -----
-function setTrackState(state){
-  ana.trackState=state;
-  ["trackIdle","trackInit","trackAnalyzing","trackDone"].forEach(id=>$(id).classList.add("hidden"));
-  $({idle:"trackIdle",init:"trackInit",analyzing:"trackAnalyzing",done:"trackDone"}[state]).classList.remove("hidden");
-  // init中はcanvasカーソルを変える
-  anaCanvas.style.cursor=state==="init"?"crosshair":"default";
-}
+// ---- APIキー管理 ----
+$("apiSettingsBtn").onclick=()=>$("apiPanel").classList.toggle("hidden");
+$("saveApiKeyBtn").onclick=()=>{apiKey=$("apiKeyInput").value.trim();if(apiKey){sessionStorage.setItem("swingApiKey",apiKey);$("apiPanel").classList.add("hidden");}refreshApiUI();};
+if(apiKey)$("apiKeyInput").value=apiKey;
+
+// ---- モード切替 ----
+function setTrackMode(mode){ana.trackMode=mode;$("modeVision").classList.toggle("active",mode==="vision");$("modeShaft").classList.toggle("active",mode==="shaft");$("shaftNote").classList.toggle("hidden",mode!=="shaft");$("apiPanel").classList.add("hidden");$("trackModeLabel").textContent=mode==="vision"?"Claude Visionで解析":"シャフト検出（APIキー不要）";}
+$("modeVision").onclick=()=>setTrackMode("vision");
+$("modeShaft").onclick=()=>setTrackMode("shaft");
+
+// ---- 追跡ステート ----
+function setTrackState(state){ana.trackState=state;["trackIdle","trackInit","trackAnalyzing","trackDone"].forEach(id=>$(id).classList.add("hidden"));$({idle:"trackIdle",init:"trackInit",analyzing:"trackAnalyzing",done:"trackDone"}[state]).classList.remove("hidden");anaCanvas.style.cursor=state==="init"?"crosshair":"default";}
 $("startTrackBtn").onclick=()=>{ana.trackInitPos=null;$("startAnalysisBtn").disabled=true;setTrackState("init");};
-$("cancelInitBtn").onclick=()=>{setTrackState("idle");};
+$("cancelInitBtn").onclick=()=>setTrackState("idle");
 $("reAnalyzeBtn").onclick=()=>{ana.trackInitPos=null;$("startAnalysisBtn").disabled=true;setTrackState("init");};
 $("clearTrackBtn").onclick=()=>{ana.trackPoints=[];setTrackState("idle");};
 
-// ----- Claude Vision API ヘッド解析 -----
-async function extractFrameAt(time){
-  return new Promise(resolve=>{
-    const onSeeked=()=>{anaVideo.removeEventListener("seeked",onSeeked);const c=document.createElement("canvas");const ar=anaVideo.videoHeight/anaVideo.videoWidth;c.width=320;c.height=Math.round(320*ar);c.getContext("2d").drawImage(anaVideo,0,0,c.width,c.height);resolve(c.toDataURL("image/jpeg",.72));};
-    anaVideo.addEventListener("seeked",onSeeked,{once:true});
-    anaVideo.currentTime=time;
-  });
-}
+// ---- フレーム抽出 ----
+async function extractFrameAt(time){return new Promise(resolve=>{const onSeeked=()=>{anaVideo.removeEventListener("seeked",onSeeked);const c=document.createElement("canvas");const ar=anaVideo.videoHeight/anaVideo.videoWidth;c.width=320;c.height=Math.round(320*ar);c.getContext("2d").drawImage(anaVideo,0,0,c.width,c.height);resolve(c.toDataURL("image/jpeg",.72));};anaVideo.addEventListener("seeked",onSeeked,{once:true});anaVideo.currentTime=time;});}
+
+// ---- Claude Vision API ----
 async function queryClaudeForHead(dataUrl,prevPos){
+  if(!apiKey){alert("APIキーを設定してください（⚙ボタン）");return null;}
   const b64=dataUrl.split(",")[1];
-  const ctx_msg=prevPos?`前のフレームでのヘッド位置は約 x=${prevPos.nx.toFixed(2)}, y=${prevPos.ny.toFixed(2)} でした。`:"";
+  const ctx_msg=prevPos?`前フレームのヘッド位置: x=${prevPos.nx.toFixed(2)}, y=${prevPos.ny.toFixed(2)}。`:"";
   try{
-    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:80,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:`ゴルフスイングの動画フレームです（後方アングル）。クラブヘッド（シャフト先端の金属部分）を探してください。${ctx_msg}\nJSONのみ返答: {"nx":0.5,"ny":0.8} (0.0〜1.0の正規化座標、左上が0,0)\n見つからない場合: {"nx":null,"ny":null}`}]}]})});
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:80,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:`ゴルフスイング動画フレームです。クラブヘッド（シャフト先端の金属部分）を探してください。${ctx_msg}\nJSONのみ返答（0.0〜1.0正規化座標）: {"nx":0.5,"ny":0.8}\n見つからない場合: {"nx":null,"ny":null}`}]}]})});
     const data=await res.json();
+    if(data.error)throw new Error(data.error.message||"API error");
     const txt=(data.content?.[0]?.text||"").replace(/```json|```/g,"").trim();
     return JSON.parse(txt);
-  }catch{return null;}
+  }catch(e){console.warn("Claude API error:",e.message);return null;}
 }
+
+// ---- シャフト検出（PCAベース）----
+const shC=document.createElement("canvas");shC.width=200;shC.height=150;
+const shCtx=shC.getContext("2d",{willReadFrequently:true});
+function detectShaft(prevNx,prevNy){
+  shCtx.drawImage(anaVideo,0,0,200,150);
+  const data=shCtx.getImageData(0,0,200,150).data;
+  const dark=[];
+  for(let y=0;y<115;y++){    // 下25%はフロア除外
+    for(let x=8;x<192;x++){  // 端は除外
+      const i=(y*200+x)*4;
+      const lum=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+      if(lum<90)dark.push({x,y});
+    }
+  }
+  if(dark.length<40)return null;
+  // 重心
+  const mx=dark.reduce((s,p)=>s+p.x,0)/dark.length;
+  const my=dark.reduce((s,p)=>s+p.y,0)/dark.length;
+  // 共分散行列
+  let sxx=0,sxy=0,syy=0;
+  for(const p of dark){const dx=p.x-mx,dy=p.y-my;sxx+=dx*dx;sxy+=dx*dy;syy+=dy*dy;}
+  const n=dark.length;sxx/=n;sxy/=n;syy/=n;
+  // 固有値で線形度チェック（主成分で分散の割合）
+  const tr=sxx+syy,det=sxx*syy-sxy*sxy;
+  const l1=(tr+Math.sqrt(Math.max(0,tr*tr-4*det)))/2;
+  const l2=tr-l1;
+  if(l1<1||l1/(l1+Math.max(l2,0.01))<0.65)return null; // 線形でなければnull
+  // 主方向（固有ベクトル）
+  const theta=Math.atan2(2*sxy,sxx-syy)/2;
+  const vx=Math.cos(theta),vy=Math.sin(theta);
+  // 射影の最大・最小
+  const projs=dark.map(p=>(p.x-mx)*vx+(p.y-my)*vy);
+  const minP=Math.min(...projs),maxP=Math.max(...projs);
+  const ep1={nx:Math.max(0,Math.min(1,(mx+minP*vx)/200)),ny:Math.max(0,Math.min(1,(my+minP*vy)/150))};
+  const ep2={nx:Math.max(0,Math.min(1,(mx+maxP*vx)/200)),ny:Math.max(0,Math.min(1,(my+maxP*vy)/150))};
+  // 前フレームに近い方を返す
+  if(prevNx!==undefined){
+    const d1=Math.hypot(ep1.nx-prevNx,ep1.ny-prevNy);
+    const d2=Math.hypot(ep2.nx-prevNx,ep2.ny-prevNy);
+    return d1<d2?ep1:ep2;
+  }
+  // 初回：Y座標が大きい方（アドレス時にヘッドが下側）
+  return ep1.ny>ep2.ny?ep1:ep2;
+}
+
+// ---- 解析実行 ----
 $("startAnalysisBtn").onclick=async()=>{
   if(!ana.trackInitPos)return;
   setTrackState("analyzing");ana.trackCancelFlag=false;ana.trackPoints=[];
@@ -584,26 +480,36 @@ $("startAnalysisBtn").onclick=async()=>{
   const SAMPLES=Math.min(20,Math.max(8,Math.ceil(dur*6)));
   const interval=dur/SAMPLES;
   let prevPos=ana.trackInitPos;
+  let detected=0;
   for(let i=0;i<SAMPLES;i++){
     if(ana.trackCancelFlag)break;
     const t=i*interval;
+    let pos=null;
     try{
-      const frameUrl=await extractFrameAt(t);
-      const pos=await queryClaudeForHead(frameUrl,prevPos);
-      if(pos&&pos.nx!==null&&pos.ny!==null){ana.trackPoints.push({t,nx:pos.nx,ny:pos.ny});prevPos=pos;}
-    }catch(e){console.warn("frame",i,"error:",e);}
+      if(ana.trackMode==="vision"){
+        const frameUrl=await extractFrameAt(t);
+        pos=await queryClaudeForHead(frameUrl,prevPos);
+        if(pos&&pos.nx!==null&&pos.ny!==null){ana.trackPoints.push({t,nx:pos.nx,ny:pos.ny});prevPos=pos;detected++;}
+      }else{
+        // シャフト検出
+        await new Promise(res=>{anaVideo.onseeked=()=>{anaVideo.onseeked=null;res();};anaVideo.currentTime=t;});
+        pos=detectShaft(prevPos?.nx,prevPos?.ny);
+        if(pos){ana.trackPoints.push({t,nx:pos.nx,ny:pos.ny});prevPos=pos;detected++;}
+      }
+    }catch(e){console.warn("frame",i,"err:",e);}
     $("progressFill").style.width=((i+1)/SAMPLES*100)+"%";
-    $("progressText").textContent=`解析中 ${i+1}/${SAMPLES}`;
+    $("progressText").textContent=`解析中 ${i+1}/${SAMPLES}  検出:${detected}`;
   }
   anaVideo.currentTime=savedTime;
   setTrackState("done");
-  if(ana.trackPoints.length===0)alert("ヘッドを検出できませんでした。後方アングルか、クラブが見えているフレームをご確認ください。");
+  if(detected===0)alert(ana.trackMode==="vision"?"ヘッドを検出できませんでした。APIキーと動画を確認してください。":"シャフトを検出できませんでした。背景が明るく・シャフトが暗い動画で試してください。");
+  else $("progressText").textContent=`完了 ${detected}/${SAMPLES}フレーム検出`;
 };
 $("cancelAnalysisBtn").onclick=()=>{ana.trackCancelFlag=true;setTrackState("idle");};
 
-// ----- 起動チェック -----
+// ---- 起動 ----
 checkSupport();
-if(window.self!==window.top){$("compatWarn").classList.remove("hidden");$("compatWarn").innerHTML="プレビュー枠ではカメラを使えません。HTMLをスマホのブラウザで直接開いてください（HTTPS推奨）。分析タブは動作確認できます。";}
+if(window.self!==window.top){$("compatWarn").classList.remove("hidden");$("compatWarn").innerHTML="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。分析タブは動作確認できます。";}
 </script>
 </body>
 </html>
