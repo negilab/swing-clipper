@@ -336,12 +336,13 @@ function getTouchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].client
 // ---- ズームリセット（scale=1なら必ずtx=ty=0）----
 function clampAndResetZoom(){
   if(zoom.scale<=1.01){zoom.scale=1;zoom.tx=0;zoom.ty=0;return;}
-  // 移動範囲の制限（コンテンツが完全に画面外に出ないように）
-  const stage=$("anaStage");
-  const maxTx=(zoom.scale-1)*stage.clientWidth*0.6;
-  const maxTy=(zoom.scale-1)*stage.clientHeight*0.6;
-  zoom.tx=Math.max(-maxTx,Math.min(maxTx,zoom.tx));
-  zoom.ty=Math.max(-maxTy,Math.min(maxTy,zoom.ty));
+  const s=zoom.scale,b=getVideoBaseRect();
+  const cw=anaCanvas.width,ch=anaCanvas.height;
+  // 動画のどの角でもキャンバス中央に届くように上下左右の限界を計算
+  // tyMin = ch/2 - s*(b.top+b.height) → 動画下端が中央に来る値
+  // tyMax = ch/2 - s*b.top            → 動画上端が中央に来る値
+  zoom.tx=Math.max(cw/2-s*(b.left+b.width),Math.min(cw/2-s*b.left,zoom.tx));
+  zoom.ty=Math.max(ch/2-s*(b.top+b.height),Math.min(ch/2-s*b.top,zoom.ty));
 }
 
 // ---- ヒット判定 ----
