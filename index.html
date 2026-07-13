@@ -163,7 +163,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v1.6</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v1.7</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -537,7 +537,18 @@ $("nextFrameBtn").onclick=()=>{anaVideo.pause();const n=anaVideo.currentTime+ste
 
 // ---- APIキー ----
 $("apiSettingsBtn").onclick=()=>$("apiPanel").classList.toggle("hidden");
-$("saveApiKeyBtn").onclick=()=>{apiKey=$("apiKeyInput").value.trim();if(apiKey){sessionStorage.setItem("swingApiKey",apiKey);$("apiPanel").classList.add("hidden");}refreshApiUI();};
+$("saveApiKeyBtn").onclick=async()=>{
+  apiKey=$("apiKeyInput").value.trim();
+  if(!apiKey){refreshApiUI();return;}
+  $("saveApiKeyBtn").textContent="確認中...";
+  const err=await testApiKey();
+  $("saveApiKeyBtn").textContent="保存";
+  if(err){alert("APIキーの確認に失敗しました:\n"+err+"\n\nよくある原因:\n・キーの貼り付けミス\n・Billingのクレジット残高不足\n・キーが無効化されている");return;}
+  sessionStorage.setItem("swingApiKey",apiKey);
+  $("apiPanel").classList.add("hidden");
+  refreshApiUI();
+  alert("✓ APIキーの接続を確認しました");
+};
 if(apiKey)$("apiKeyInput").value=apiKey;
 
 // ---- モード ----
@@ -565,17 +576,27 @@ function seekTo(time){
 }
 
 // ---- Claude Vision API ----
+let lastApiError="";
 async function queryClaudeForHead(dataUrl,prevPos){
-  if(!apiKey){alert("APIキーを設定してください（⚙）");return null;}
+  if(!apiKey){lastApiError="APIキー未設定";return null;}
   const b64=dataUrl.split(",")[1];
   const ctxMsg=prevPos?`前フレームのヘッド位置: x=${prevPos.nx.toFixed(2)}, y=${prevPos.ny.toFixed(2)}。`:"";
   try{
     const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:80,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:`ゴルフスイング動画フレームです。クラブヘッド（シャフト先端の金属部分）を探してください。${ctxMsg}\nJSONのみ: {"nx":0.5,"ny":0.8} (0-1正規化座標)\n見つからない: {"nx":null,"ny":null}`}]}]})});
     const data=await res.json();
-    if(data.error)throw new Error(data.error.message);
+    if(data.error){lastApiError=data.error.message||JSON.stringify(data.error);return null;}
     const txt=(data.content?.[0]?.text||"").replace(/```json|```/g,"").trim();
     return JSON.parse(txt);
-  }catch(e){console.warn("Vision API:",e.message);return null;}
+  }catch(e){lastApiError=e.message;return null;}
+}
+// APIキー接続テスト
+async function testApiKey(){
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:10,messages:[{role:"user",content:"hi"}]})});
+    const data=await res.json();
+    if(data.error)return data.error.message||"APIエラー";
+    return null; // OK
+  }catch(e){return e.message;}
 }
 
 // ---- シャフト検出（フレーム差分＋PCA：動いている暗線を検出）----
@@ -621,7 +642,7 @@ function detectShaftMotion(imgA,imgB,prevNx,prevNy){
 // ---- 解析実行 ----
 $("startAnalysisBtn").onclick=async()=>{
   if(!ana.trackInitPos)return;
-  setTrackState("analyzing");ana.trackCancelFlag=false;ana.trackPoints=[];
+  setTrackState("analyzing");ana.trackCancelFlag=false;ana.trackPoints=[];lastApiError="";
   const savedTime=anaVideo.currentTime,dur=anaVideo.duration;
   const SAMPLES=Math.min(20,Math.max(8,Math.ceil(dur*6)));
   const interval=dur/SAMPLES;
@@ -648,7 +669,7 @@ $("startAnalysisBtn").onclick=async()=>{
     $("progressText").textContent=`解析中 ${i+1}/${SAMPLES}  検出:${detected}`;
   }
   anaVideo.currentTime=savedTime;setTrackState("done");
-  if(detected===0)alert(ana.trackMode==="vision"?"ヘッドを検出できませんでした。APIキーと動画を確認してください。":"シャフトを検出できませんでした。明るい背景×暗いシャフトの動画で試してください。");
+  if(detected===0)alert(ana.trackMode==="vision"?(lastApiError?"解析に失敗しました。\nAPIエラー: "+lastApiError:"ヘッドを検出できませんでした（API通信は正常）。動画のアングルを確認してください。"):"シャフトを検出できませんでした。動きのあるスイング区間を含む動画で試してください。");
   else{
     $("progressText").textContent=`完了 ${detected}/${SAMPLES}フレーム検出`;
     // 軌跡は「現在時刻までの点」を描く仕様のため、最終検出時刻へシークして全体を表示
