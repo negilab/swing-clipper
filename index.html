@@ -233,7 +233,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.4</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.5</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -405,7 +405,7 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 // ===== 分析タブ =====
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
-const pinch={active:false,startDist:0,startScale:1,startTx:0,startTy:0,midX:0,midY:0};
+const pinch={active:false,lastDist:0,lastMidX:0,lastMidY:0};
 const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
 let stepSize=0.05;
 let isFs=false;
@@ -514,35 +514,42 @@ $("fsClearBtn").onclick=()=>{if(confirm("すべて消去しますか？")){ana.a
 
 // ---- ピンチズーム（修正版：現在指中点でズーム＋パン）----
 anaCanvas.addEventListener("touchstart",e=>{if(e.touches.length===2){e.preventDefault();pinch.active=true;
-  // 進行中の描画・パン・ドラッグを打ち切る（誤反応防止）
   ana.drawing=null;ana.dragging=false;ana.dragHandle=null;ptr.panning=false;ptr.moved=true;
-  pinch.startDist=Math.max(30,getTouchDist(e.touches)); // 下限30pxで発散防止
-  pinch.startScale=zoom.scale;pinch.startTx=zoom.tx;pinch.startTy=zoom.ty;
   const rect=anaCanvas.getBoundingClientRect();const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
-  pinch.midX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;pinch.midY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;
-}},{passive:false});
+  pinch.lastDist=getTouchDist(e.touches);
+  pinch.lastMidX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;
+  pinch.lastMidY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;
+},{passive:false});
 anaCanvas.addEventListener("touchmove",e=>{
   if(pinch.active&&e.touches.length===2){
     e.preventDefault();
     const rect=anaCanvas.getBoundingClientRect();
     const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
+    const curDist=getTouchDist(e.touches);
     const curMidX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;
     const curMidY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;
-    const nd=Math.max(30,getTouchDist(e.touches)); // 下限クランプ
-    let ns=pinch.startScale*(nd/pinch.startDist);
-    if(!isFinite(ns)||isNaN(ns))ns=zoom.scale; // NaN/Inf ガード
-    ns=Math.max(1,Math.min(4,ns)); // 上限4倍
-    const ratio=ns/pinch.startScale;
-    zoom.tx=curMidX-(pinch.midX-pinch.startTx)*ratio;
-    zoom.ty=curMidY-(pinch.midY-pinch.startTy)*ratio;
-    zoom.scale=ns;
-    clampAndResetZoom();
+    if(pinch.lastDist>10 && curDist>10){
+      // 前フレーム比の倍率変化（1フレームで最大±12%に制限＝暴走防止）
+      let f=curDist/pinch.lastDist;
+      f=Math.max(0.88,Math.min(1.12,f));
+      let ns=Math.max(1,Math.min(4,zoom.scale*f));
+      if(!isFinite(ns))ns=zoom.scale;
+      // ズーム中心を指の中点に固定
+      const ratio=ns/zoom.scale;
+      zoom.tx=curMidX-(curMidX-zoom.tx)*ratio;
+      zoom.ty=curMidY-(curMidY-zoom.ty)*ratio;
+      // 中点の移動分をパンとして反映
+      zoom.tx+=curMidX-pinch.lastMidX;
+      zoom.ty+=curMidY-pinch.lastMidY;
+      zoom.scale=ns;
+      clampAndResetZoom();
+    }
+    pinch.lastDist=curDist;pinch.lastMidX=curMidX;pinch.lastMidY=curMidY;
   }
 },{passive:false});
 anaCanvas.addEventListener("touchend",e=>{
   if(e.touches.length<2){
-    pinch.active=false;clampAndResetZoom();
-    // 指が1本残っていても、その指でのパン誤爆を防ぐ
+    pinch.active=false;pinch.lastDist=0;clampAndResetZoom();
     if(e.touches.length===1){ptr.moved=true;ptr.panning=false;}
   }
 });
