@@ -36,6 +36,26 @@ header{display:flex;align-items:center;justify-content:space-between;padding:max
 .fs-drawer-page.active{display:flex;}
 .fs-tool-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fs-tool-row .tool-btn{flex:0 0 40px;}
+
+/* v2.4 ドロワー 半透明＆コンパクト */
+.fs-drawer{background:rgba(8,12,10,.55)!important;backdrop-filter:blur(9px);padding:6px 10px max(10px,env(safe-area-inset-bottom))!important;gap:5px!important;}
+.fs-drawer .fs-drawer-tabs{gap:4px;margin-bottom:0;}
+.fs-drawer .fs-dtab{padding:5px;font-size:11px;border-radius:8px;}
+.fs-drawer-page{gap:5px!important;}
+.fs-drawer .seek-row{gap:7px;}
+.fs-drawer .seek-row input{height:3px;}
+.fs-drawer .ana-time{font-size:11px;min-width:50px;}
+.fs-drawer .pbtn-row,.fs-drawer .step-row,.fs-drawer .fs-tool-row{gap:4px;}
+.fs-drawer .play-pause{flex:0 0 42px;font-size:15px;padding:6px;}
+.fs-drawer .speed-btn{padding:6px 3px;font-size:11px;border-radius:8px;}
+.fs-drawer .step-lbl{font-size:10px;}
+.fs-drawer .step-btn{padding:6px 3px;font-size:11px;border-radius:8px;}
+.fs-drawer .frame-nav{flex:0 0 38px;padding:6px;font-size:15px;border-radius:8px;}
+.fs-drawer .tool-btn{flex:0 0 36px;padding:6px;font-size:15px;border-radius:9px;}
+.fs-drawer .color-dot{width:24px;height:24px;}
+.fs-drawer .act-btn{padding:6px 10px;font-size:11px;border-radius:9px;}
+/* サイドボタンも少しコンパクトに */
+.fs-side button{width:38px;height:38px;font-size:16px;background:rgba(8,12,10,.55);border-radius:10px;}
 .hidden{display:none!important;}
 /* 録画 */
 .stage{position:relative;flex:1;min-height:200px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
@@ -181,6 +201,26 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .fs-drawer-page.active{display:flex;}
 .fs-tool-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fs-tool-row .tool-btn{flex:0 0 40px;}
+
+/* v2.4 ドロワー 半透明＆コンパクト */
+.fs-drawer{background:rgba(8,12,10,.55)!important;backdrop-filter:blur(9px);padding:6px 10px max(10px,env(safe-area-inset-bottom))!important;gap:5px!important;}
+.fs-drawer .fs-drawer-tabs{gap:4px;margin-bottom:0;}
+.fs-drawer .fs-dtab{padding:5px;font-size:11px;border-radius:8px;}
+.fs-drawer-page{gap:5px!important;}
+.fs-drawer .seek-row{gap:7px;}
+.fs-drawer .seek-row input{height:3px;}
+.fs-drawer .ana-time{font-size:11px;min-width:50px;}
+.fs-drawer .pbtn-row,.fs-drawer .step-row,.fs-drawer .fs-tool-row{gap:4px;}
+.fs-drawer .play-pause{flex:0 0 42px;font-size:15px;padding:6px;}
+.fs-drawer .speed-btn{padding:6px 3px;font-size:11px;border-radius:8px;}
+.fs-drawer .step-lbl{font-size:10px;}
+.fs-drawer .step-btn{padding:6px 3px;font-size:11px;border-radius:8px;}
+.fs-drawer .frame-nav{flex:0 0 38px;padding:6px;font-size:15px;border-radius:8px;}
+.fs-drawer .tool-btn{flex:0 0 36px;padding:6px;font-size:15px;border-radius:9px;}
+.fs-drawer .color-dot{width:24px;height:24px;}
+.fs-drawer .act-btn{padding:6px 10px;font-size:11px;border-radius:9px;}
+/* サイドボタンも少しコンパクトに */
+.fs-side button{width:38px;height:38px;font-size:16px;background:rgba(8,12,10,.55);border-radius:10px;}
 .hidden{display:none!important;}
 </style>
 </head>
@@ -193,7 +233,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.3</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.4</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
