@@ -193,7 +193,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.2</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.3</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -445,7 +445,20 @@ $("fsPanelToggle").onclick=e=>{e.stopPropagation();const d=$("fsDrawer");const h
 // ドロワー内タブ
 document.querySelectorAll(".fs-dtab").forEach(b=>{b.onclick=()=>{document.querySelectorAll(".fs-dtab").forEach(x=>x.classList.toggle("active",x===b));$("fsPagePlay").classList.toggle("active",b.dataset.dpage==="play");$("fsPageDraw").classList.toggle("active",b.dataset.dpage==="draw");};});
 // ダブルタップでズームリセット（全画面・通常共通）
-$("anaCanvas").addEventListener("click",()=>{const now=Date.now();if(now-lastTap<300){zoom.scale=1;zoom.tx=0;zoom.ty=0;const h=$("zoomHint");h.classList.add("show");setTimeout(()=>h.classList.remove("show"),1500);}lastTap=now;});
+$("anaCanvas").addEventListener("click",()=>{
+  const now=Date.now();
+  if(now-lastTap<300){
+    // ダブルタップ → ズームリセット
+    zoom.scale=1;zoom.tx=0;zoom.ty=0;
+    const h=$("zoomHint");h.classList.add("show");setTimeout(()=>h.classList.remove("show"),1500);
+  }else if(isFs && ana.tool==="cursor" && !$("fsDrawer").classList.contains("hidden-drawer")){
+    // 全画面・カーソルツール・パネル表示中に動画側をシングルタップ → パネルを閉じる
+    $("fsDrawer").classList.add("hidden-drawer");
+    $("fsPanelToggle").classList.remove("on");
+    setTimeout(syncCanvas,60);
+  }
+  lastTap=now;
+});
 // 全画面シーク・再生
 $("fsSeek").oninput=()=>{if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("fsSeek").value)/1000)*anaVideo.duration;};
 $("fsPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pause();};
