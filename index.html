@@ -21,7 +21,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:max
 .tab-btn{font-family:inherit;font-weight:600;font-size:14px;background:transparent;border:none;color:var(--muted);padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;}
 .tab-btn.active{color:var(--impact);border-bottom-color:var(--impact);}
 .pane{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;}
-.pane.hidden{display:none!important;}
+.pane
+/* v2.2 全画面UI改善 */
+.fs-side{position:absolute;top:10px;right:10px;z-index:20;display:flex;flex-direction:column;gap:8px;}
+.fs-side button{width:42px;height:42px;padding:0;font-size:18px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;}
+.fs-side button.on{background:rgba(184,255,60,.2);color:var(--impact);border-color:var(--impact);}
+/* 全画面ドロワー（下からスライド、自動では消えない）*/
+.fs-drawer{position:absolute;bottom:0;left:0;right:0;z-index:18;background:rgba(8,12,10,.9);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px 12px max(14px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px;transform:translateY(0);transition:transform .25s;}
+.fs-drawer.hidden-drawer{transform:translateY(105%);}
+.fs-drawer-tabs{display:flex;gap:5px;margin-bottom:1px;}
+.fs-dtab{flex:1;padding:7px;font-size:12px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-weight:600;}
+.fs-dtab.active{background:rgba(184,255,60,.15);color:var(--impact);border-color:var(--impact);}
+.fs-drawer-page{display:none;flex-direction:column;gap:7px;}
+.fs-drawer-page.active{display:flex;}
+.fs-tool-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fs-tool-row .tool-btn{flex:0 0 40px;}
+.hidden{display:none!important;}
 /* 録画 */
 .stage{position:relative;flex:1;min-height:200px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 #video{width:100%;height:100%;object-fit:cover;background:#000;display:block;}
@@ -151,6 +166,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .prog-txt{font-size:12px;color:var(--muted);font-family:"JetBrains Mono",monospace;}
 .shaft-note{font-size:11px;color:var(--muted);line-height:1.5;}
 .warn{background:rgba(255,107,94,.1);border:1px solid rgba(255,107,94,.4);color:#ffd7d2;border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;margin:10px 14px 0;}
+
+/* v2.2 全画面UI改善 */
+.fs-side{position:absolute;top:10px;right:10px;z-index:20;display:flex;flex-direction:column;gap:8px;}
+.fs-side button{width:42px;height:42px;padding:0;font-size:18px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;}
+.fs-side button.on{background:rgba(184,255,60,.2);color:var(--impact);border-color:var(--impact);}
+/* 全画面ドロワー（下からスライド、自動では消えない）*/
+.fs-drawer{position:absolute;bottom:0;left:0;right:0;z-index:18;background:rgba(8,12,10,.9);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px 12px max(14px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px;transform:translateY(0);transition:transform .25s;}
+.fs-drawer.hidden-drawer{transform:translateY(105%);}
+.fs-drawer-tabs{display:flex;gap:5px;margin-bottom:1px;}
+.fs-dtab{flex:1;padding:7px;font-size:12px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-weight:600;}
+.fs-dtab.active{background:rgba(184,255,60,.15);color:var(--impact);border-color:var(--impact);}
+.fs-drawer-page{display:none;flex-direction:column;gap:7px;}
+.fs-drawer-page.active{display:flex;}
+.fs-tool-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fs-tool-row .tool-btn{flex:0 0 40px;}
 .hidden{display:none!important;}
 </style>
 </head>
@@ -163,7 +193,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.1</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.2</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -204,30 +234,58 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="ana-stage hidden" id="anaStage">
     <video id="anaVideo" playsinline></video>
     <canvas id="anaCanvas"></canvas>
-    <!-- 全画面FAB -->
+    <!-- 全画面サイドボタン -->
+    <div class="fs-side" id="fsSide" style="display:none">
+      <button id="fsExitBtn" title="全画面終了">✕</button>
+      <button id="fsPanelToggle" class="on" title="パネル開閉">⚙</button>
+    </div>
     <button class="fs-fab" id="fsFab" title="全画面">⛶</button>
-    <!-- 全画面時コントロールオーバーレイ -->
-    <div class="fs-overlay peek" id="fsOverlay">
-      <div class="seek-row"><input type="range" id="fsSeek" min="0" max="1000" value="0" step="1"><span class="ana-time" id="fsTime">0:00.0</span></div>
-      <div class="pbtn-row" style="gap:5px">
-        <button class="play-pause" id="fsPlayBtn">▶</button>
-        <button class="speed-btn active" data-fs-rate="1">1x</button>
-        <button class="speed-btn" data-fs-rate="0.5">½</button>
-        <button class="speed-btn" data-fs-rate="0.2">⅕</button>
-        <button class="speed-btn" data-fs-rate="0.1">1/10</button>
-        <button class="act-btn" id="fsClose" style="flex:0 0 auto;background:rgba(255,107,94,.15);color:var(--danger);border-color:rgba(255,107,94,.3)">✕</button>
+    <!-- 全画面ドロワー -->
+    <div class="fs-drawer hidden-drawer" id="fsDrawer">
+      <div class="fs-drawer-tabs">
+        <button class="fs-dtab active" data-dpage="play">再生・コマ送り</button>
+        <button class="fs-dtab" data-dpage="draw">描画ツール</button>
       </div>
-      <div class="step-row">
-        <span class="step-lbl">送り幅:</span>
-        <button class="step-btn fs-step active" data-fs-step="0.05">1/20s</button>
-        <button class="step-btn fs-step" data-fs-step="0.02">1/50s</button>
-        <button class="step-btn fs-step" data-fs-step="0.01">1/100s</button>
-        <button class="step-btn fs-step" data-fs-step="0.005">1/200s</button>
-        <button class="frame-nav" id="fsPrevBtn">◀</button>
-        <button class="frame-nav" id="fsNextBtn">▶</button>
+      <!-- 再生ページ -->
+      <div class="fs-drawer-page active" id="fsPagePlay">
+        <div class="seek-row"><input type="range" id="fsSeek" min="0" max="1000" value="0" step="1"><span class="ana-time" id="fsTime">0:00.0</span></div>
+        <div class="pbtn-row" style="gap:5px">
+          <button class="play-pause" id="fsPlayBtn">▶</button>
+          <button class="speed-btn active" data-fs-rate="1">1x</button>
+          <button class="speed-btn" data-fs-rate="0.5">½</button>
+          <button class="speed-btn" data-fs-rate="0.2">⅕</button>
+          <button class="speed-btn" data-fs-rate="0.1">1/10</button>
+        </div>
+        <div class="step-row">
+          <span class="step-lbl">送り幅:</span>
+          <button class="step-btn fs-step active" data-fs-step="0.05">1/20s</button>
+          <button class="step-btn fs-step" data-fs-step="0.02">1/50s</button>
+          <button class="step-btn fs-step" data-fs-step="0.01">1/100s</button>
+          <button class="step-btn fs-step" data-fs-step="0.005">1/200s</button>
+          <button class="frame-nav" id="fsPrevBtn">◀</button>
+          <button class="frame-nav" id="fsNextBtn">▶</button>
+        </div>
+      </div>
+      <!-- 描画ページ -->
+      <div class="fs-drawer-page" id="fsPageDraw">
+        <div class="fs-tool-row">
+          <button class="tool-btn fs-tool active" data-tool="cursor">↖</button>
+          <button class="tool-btn fs-tool" data-tool="line">╱</button>
+          <button class="tool-btn fs-tool" data-tool="circle">○</button>
+          <div class="color-group" style="margin-left:4px">
+            <div class="color-dot fs-color active" data-color="#ef4444" style="background:#ef4444"></div>
+            <div class="color-dot fs-color" data-color="#3b82f6" style="background:#3b82f6"></div>
+            <div class="color-dot fs-color" data-color="#22c55e" style="background:#22c55e"></div>
+            <div class="color-dot fs-color" data-color="#eab308" style="background:#eab308"></div>
+          </div>
+        </div>
+        <div class="fs-tool-row">
+          <button class="act-btn" id="fsUndoBtn">↩ 取消</button>
+          <button class="act-btn sel-del danger" id="fsSelDelBtn">✕ 選択削除</button>
+          <button class="act-btn danger" id="fsClearBtn">全消去</button>
+        </div>
       </div>
     </div>
-    <!-- ダブルタップヒント -->
     <div class="fs-zoom-hint" id="zoomHint">ダブルタップでズームリセット</div>
   </div>
 
@@ -377,27 +435,29 @@ $("dropZone").onclick=e=>{if(e.target===$("pickVideoBtn"))return;$("videoFileInp
 $("videoFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadAnaSource(URL.createObjectURL(f));};
 $("changeVideoBtn").onclick=()=>{if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}if(isFs)exitFs();anaVideo.pause();anaVideo.src="";["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.add("hidden"));$("anaUpload").classList.remove("hidden");$("videoFileInput").value="";$("iosNote").classList.add("hidden");};
 
-// ---- 全画面 ----
-function enterFs(){isFs=true;$("anaStage").classList.add("fs");$("fsFab").textContent="✕";showFsOverlay();setTimeout(syncCanvas,60);}
-function exitFs(){isFs=false;$("anaStage").classList.remove("fs");$("fsFab").textContent="⛶";$("fsOverlay").classList.add("peek");setTimeout(syncCanvas,60);}
-function showFsOverlay(){$("fsOverlay").classList.remove("peek");clearTimeout(fsControlsTimer);fsControlsTimer=setTimeout(()=>$("fsOverlay").classList.add("peek"),4000);}
-$("fsFab").onclick=e=>{e.stopPropagation();isFs?exitFs():enterFs();};
-$("fsClose").onclick=exitFs;
-// 全画面中タップ → オーバーレイ表示切替
-$("anaCanvas").addEventListener("click",e=>{
-  const now=Date.now();
-  if(now-lastTap<300){// ダブルタップ → ズームリセット（全画面・通常どちらでも）
-    zoom.scale=1;zoom.tx=0;zoom.ty=0;
-    const h=$("zoomHint");h.classList.add("show");setTimeout(()=>h.classList.remove("show"),1500);
-  }else if(isFs){showFsOverlay();}
-  lastTap=now;
-});
+// ---- 全画面（v2.2: 自動非表示なし・ドロワー式）----
+function enterFs(){isFs=true;$("anaStage").classList.add("fs");$("fsFab").style.display="none";$("fsSide").style.display="flex";$("fsDrawer").classList.remove("hidden-drawer");$("fsPanelToggle").classList.add("on");setTimeout(syncCanvas,60);}
+function exitFs(){isFs=false;$("anaStage").classList.remove("fs");$("fsFab").style.display="";$("fsSide").style.display="none";setTimeout(syncCanvas,60);}
+$("fsFab").onclick=e=>{e.stopPropagation();enterFs();};
+$("fsExitBtn").onclick=e=>{e.stopPropagation();exitFs();};
+// パネル開閉（手動トグルのみ・勝手に消えない）
+$("fsPanelToggle").onclick=e=>{e.stopPropagation();const d=$("fsDrawer");const hidden=d.classList.toggle("hidden-drawer");$("fsPanelToggle").classList.toggle("on",!hidden);setTimeout(syncCanvas,60);};
+// ドロワー内タブ
+document.querySelectorAll(".fs-dtab").forEach(b=>{b.onclick=()=>{document.querySelectorAll(".fs-dtab").forEach(x=>x.classList.toggle("active",x===b));$("fsPagePlay").classList.toggle("active",b.dataset.dpage==="play");$("fsPageDraw").classList.toggle("active",b.dataset.dpage==="draw");};});
+// ダブルタップでズームリセット（全画面・通常共通）
+$("anaCanvas").addEventListener("click",()=>{const now=Date.now();if(now-lastTap<300){zoom.scale=1;zoom.tx=0;zoom.ty=0;const h=$("zoomHint");h.classList.add("show");setTimeout(()=>h.classList.remove("show"),1500);}lastTap=now;});
 // 全画面シーク・再生
 $("fsSeek").oninput=()=>{if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("fsSeek").value)/1000)*anaVideo.duration;};
 $("fsPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pause();};
 anaVideo.onplay=()=>{$("anaPlayBtn").textContent="⏸";$("fsPlayBtn").textContent="⏸";};
 anaVideo.onpause=anaVideo.onended=()=>{$("anaPlayBtn").textContent="▶";$("fsPlayBtn").textContent="▶";};
-document.querySelectorAll("[data-fs-rate]").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.fsRate);document.querySelectorAll("[data-fs-rate]").forEach(x=>x.classList.toggle("active",x===b));};});
+document.querySelectorAll("[data-fs-rate]").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.fsRate);document.querySelectorAll("[data-fs-rate]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("[data-rate]").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.rate)===parseFloat(b.dataset.fsRate)));};});
+// 全画面 描画ツール（通常ツールと同期）
+document.querySelectorAll(".fs-tool").forEach(b=>{b.onclick=()=>{ana.tool=b.dataset.tool;document.querySelectorAll(".fs-tool").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tool-btn:not(.fs-tool)").forEach(x=>x.classList.toggle("active",x.dataset.tool===ana.tool));};});
+document.querySelectorAll(".fs-color").forEach(d=>{d.onclick=()=>{ana.color=d.dataset.color;document.querySelectorAll(".fs-color").forEach(x=>x.classList.toggle("active",x===d));document.querySelectorAll(".color-dot:not(.fs-color)").forEach(x=>x.classList.toggle("active",x.dataset.color===ana.color));};});
+$("fsUndoBtn").onclick=()=>{if(ana.annotations.length>0)ana.annotations.pop();else if(ana.trackPoints.length>0)ana.trackPoints.pop();};
+$("fsSelDelBtn").onclick=()=>{if(ana.selectedIdx>=0){ana.annotations.splice(ana.selectedIdx,1);ana.selectedIdx=-1;updateSelDeleteBtn();}};
+$("fsClearBtn").onclick=()=>{if(confirm("すべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
 
 // ---- ピンチズーム（修正版：現在指中点でズーム＋パン）----
 anaCanvas.addEventListener("touchstart",e=>{if(e.touches.length===2){e.preventDefault();pinch.active=true;
@@ -515,7 +575,7 @@ anaCanvas.addEventListener("pointercancel",()=>{ana.dragging=false;ana.dragHandl
 // ---- ツール・カラー ----
 document.querySelectorAll(".tool-btn").forEach(b=>{b.onclick=()=>{ana.tool=b.dataset.tool;document.querySelectorAll(".tool-btn").forEach(x=>x.classList.toggle("active",x===b));};});
 document.querySelectorAll(".color-dot").forEach(d=>{d.onclick=()=>{ana.color=d.dataset.color;document.querySelectorAll(".color-dot").forEach(x=>x.classList.toggle("active",x===d));};});
-function updateSelDeleteBtn(){$("selDelBtn").classList.toggle("show",ana.selectedIdx>=0);}
+function updateSelDeleteBtn(){const on=ana.selectedIdx>=0;$("selDelBtn").classList.toggle("show",on);const f=$("fsSelDelBtn");if(f)f.classList.toggle("show",on);}
 $("selDelBtn").onclick=()=>{if(ana.selectedIdx>=0){ana.annotations.splice(ana.selectedIdx,1);ana.selectedIdx=-1;updateSelDeleteBtn();}};
 $("undoBtn").onclick=()=>{if(ana.annotations.length>0)ana.annotations.pop();else if(ana.trackPoints.length>0)ana.trackPoints.pop();};
 $("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をすべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
