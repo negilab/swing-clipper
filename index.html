@@ -233,7 +233,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.6</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.7dbg</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -272,6 +272,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <input type="file" id="videoFileInput" accept="video/*" hidden>
 
   <div class="ana-stage hidden" id="anaStage">
+    <div id="dbgHud" style="position:absolute;top:56px;left:10px;z-index:30;background:rgba(0,0,0,.7);color:#b8ff3c;font:11px monospace;padding:6px 9px;border-radius:8px;pointer-events:none;white-space:pre;line-height:1.4">dbg</div>
     <video id="anaVideo" playsinline></video>
     <canvas id="anaCanvas"></canvas>
     <!-- 全画面サイドボタン -->
@@ -453,6 +454,7 @@ function startAnaRaf(){
     if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect();ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=1.5;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=2;ctx.stroke();}}
     if(ana.drawing){const d=ana.drawing;ctx.strokeStyle=ana.color;ctx.lineWidth=2.5;ctx.lineCap="round";ctx.setLineDash([6,4]);if(d.type==="line"){const{x:x1,y:y1}=normToBase(d.nx1,d.ny1);const{x:x2,y:y2}=normToBase(d.nx2??d.nx1,d.ny2??d.ny1);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(d.type==="circle"){const{x:cx,y:cy}=normToBase(d.ncx,d.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,(d.nr??0)*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);}
 
+    const hud=$("dbgHud");if(hud){hud.textContent="scale "+zoom.scale.toFixed(3)+"\ntx "+zoom.tx.toFixed(0)+" ty "+zoom.ty.toFixed(0)+"\nptrs "+activePointers.size+" mode "+gesture.mode;}
     updateAnaTime();
   }
   render();
@@ -523,7 +525,6 @@ function twoPointerData(){
 
 anaCanvas.addEventListener("pointerdown",e=>{
   e.preventDefault();
-  anaCanvas.setPointerCapture?.(e.pointerId);
   activePointers.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
 
   if(activePointers.size===2){
@@ -557,20 +558,19 @@ anaCanvas.addEventListener("pointermove",e=>{
   e.preventDefault();
   activePointers.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
 
-  // ピンチ処理
+  // ピンチ処理（累積なし・毎回startからの絶対計算）
   if(gesture.mode==="pinch"&&activePointers.size>=2){
     const{dist,midCx,midCy}=twoPointerData();
-    let f=dist/gesture.startDist;
-    let ns=gesture.startScale*f;
-    if(!isFinite(ns))ns=zoom.scale;
+    let ns=gesture.startScale*(dist/gesture.startDist);
+    if(!isFinite(ns)||isNaN(ns))ns=gesture.startScale;
     ns=Math.max(1,Math.min(4,ns));
-    const{sx,sy,rect}=canvasScale();
-    const curMidX=(midCx-rect.left)*sx,curMidY=(midCy-rect.top)*sy;
-    // ピンチ中心を固定してズーム
+    const{sx,rect}=canvasScale();
+    const curMidX=(midCx-rect.left)*sx,curMidY=(midCy-rect.top)*sx;
+    // 開始時の中点(canvas座標)の下にあった「コンテンツ座標」が、現在の中点の下に来るように
     const ratio=ns/gesture.startScale;
+    zoom.scale=ns;
     zoom.tx=curMidX-(gesture.startMidCx-gesture.startTx)*ratio;
     zoom.ty=curMidY-(gesture.startMidCy-gesture.startTy)*ratio;
-    zoom.scale=ns;
     clampZoom();
     return;
   }
@@ -605,7 +605,6 @@ anaCanvas.addEventListener("pointermove",e=>{
 
 function endPointer(e){
   activePointers.delete(e.pointerId);
-  anaCanvas.releasePointerCapture?.(e.pointerId);
   // 図形確定
   if(ana.drawing){
     const b=getVideoBaseRect();let ok=false;
