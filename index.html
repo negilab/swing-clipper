@@ -233,7 +233,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.7dbg</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.8dbg</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -423,14 +423,23 @@ function getTouchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].client
 function clampZoom(){
   if(!isFinite(zoom.scale)||isNaN(zoom.scale))zoom.scale=1;
   zoom.scale=Math.max(1,Math.min(4,zoom.scale));
-  if(zoom.scale<=1.01){zoom.scale=1;zoom.tx=0;zoom.ty=0;return;}
-  const s=zoom.scale,b=getVideoBaseRect();
+  if(!isFinite(zoom.tx))zoom.tx=0;
+  if(!isFinite(zoom.ty))zoom.ty=0;
+  if(zoom.scale<=1.001){zoom.scale=1;zoom.tx=0;zoom.ty=0;return;}
+  const b=getVideoBaseRect(),s=zoom.scale;
   const cw=anaCanvas.width,ch=anaCanvas.height;
-  // 動画のどの角でもキャンバス中央に届くように上下左右の限界を計算
-  // tyMin = ch/2 - s*(b.top+b.height) → 動画下端が中央に来る値
-  // tyMax = ch/2 - s*b.top            → 動画上端が中央に来る値
-  zoom.tx=Math.max(cw/2-s*(b.left+b.width),Math.min(cw/2-s*b.left,zoom.tx));
-  zoom.ty=Math.max(ch/2-s*(b.top+b.height),Math.min(ch/2-s*b.top,zoom.ty));
+  // 画面上での動画矩形の左上・サイズ
+  const contentW=s*b.width, contentH=s*b.height;
+  const baseLeft=s*b.left, baseTop=s*b.top; // translate前のscale適用済みオフセット
+  // 動画左端(=tx+baseLeft)は0以下、右端(=tx+baseLeft+contentW)はcw以上でなければならない
+  // → tx <= -baseLeft  かつ  tx >= cw - baseLeft - contentW
+  const txMax=-baseLeft;
+  const txMin=cw-baseLeft-contentW;
+  const tyMax=-baseTop;
+  const tyMin=ch-baseTop-contentH;
+  // min<=maxのはず（scale>1なので）。念のためクランプ
+  zoom.tx=Math.min(txMax,Math.max(txMin,zoom.tx));
+  zoom.ty=Math.min(tyMax,Math.max(tyMin,zoom.ty));
 }
 
 // ---- ヒット判定 ----
@@ -558,19 +567,20 @@ anaCanvas.addEventListener("pointermove",e=>{
   e.preventDefault();
   activePointers.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
 
-  // ピンチ処理（累積なし・毎回startからの絶対計算）
+  // ピンチ処理（中心固定・累積なし）
   if(gesture.mode==="pinch"&&activePointers.size>=2){
     const{dist,midCx,midCy}=twoPointerData();
     let ns=gesture.startScale*(dist/gesture.startDist);
     if(!isFinite(ns)||isNaN(ns))ns=gesture.startScale;
     ns=Math.max(1,Math.min(4,ns));
     const{sx,rect}=canvasScale();
-    const curMidX=(midCx-rect.left)*sx,curMidY=(midCy-rect.top)*sx;
-    // 開始時の中点(canvas座標)の下にあった「コンテンツ座標」が、現在の中点の下に来るように
-    const ratio=ns/gesture.startScale;
+    const mX=(midCx-rect.left)*sx,mY=(midCy-rect.top)*sx;
+    // 開始中点の下にあったコンテンツ座標を、現在中点に合わせて固定
+    const cX=(gesture.startMidCx-gesture.startTx)/gesture.startScale;
+    const cY=(gesture.startMidCy-gesture.startTy)/gesture.startScale;
     zoom.scale=ns;
-    zoom.tx=curMidX-(gesture.startMidCx-gesture.startTx)*ratio;
-    zoom.ty=curMidY-(gesture.startMidCy-gesture.startTy)*ratio;
+    zoom.tx=mX-cX*ns;
+    zoom.ty=mY-cY*ns;
     clampZoom();
     return;
   }
