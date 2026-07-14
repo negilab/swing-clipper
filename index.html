@@ -233,7 +233,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.5</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.6</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -405,7 +405,6 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 // ===== 分析タブ =====
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
-const pinch={active:false,lastDist:0,lastMidX:0,lastMidY:0};
 const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
 let stepSize=0.05;
 let isFs=false;
@@ -420,7 +419,7 @@ function normToBase(nx,ny){const b=getVideoBaseRect();return{x:b.left+nx*b.width
 function getTouchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
 
 // ---- ズームリセット（scale=1なら必ずtx=ty=0）----
-function clampAndResetZoom(){
+function clampZoom(){
   if(!isFinite(zoom.scale)||isNaN(zoom.scale))zoom.scale=1;
   zoom.scale=Math.max(1,Math.min(4,zoom.scale));
   if(zoom.scale<=1.01){zoom.scale=1;zoom.tx=0;zoom.ty=0;return;}
@@ -487,15 +486,9 @@ document.querySelectorAll(".fs-dtab").forEach(b=>{b.onclick=()=>{document.queryS
 // ダブルタップでズームリセット（全画面・通常共通）
 $("anaCanvas").addEventListener("click",()=>{
   const now=Date.now();
-  if(now-lastTap<300){
-    // ダブルタップ → ズームリセット
+  if(now-lastTap<300){ // ダブルタップ → ズームリセット
     zoom.scale=1;zoom.tx=0;zoom.ty=0;
     const h=$("zoomHint");h.classList.add("show");setTimeout(()=>h.classList.remove("show"),1500);
-  }else if(isFs && ana.tool==="cursor" && !$("fsDrawer").classList.contains("hidden-drawer")){
-    // 全画面・カーソルツール・パネル表示中に動画側をシングルタップ → パネルを閉じる
-    $("fsDrawer").classList.add("hidden-drawer");
-    $("fsPanelToggle").classList.remove("on");
-    setTimeout(syncCanvas,60);
   }
   lastTap=now;
 });
@@ -513,74 +506,79 @@ $("fsSelDelBtn").onclick=()=>{if(ana.selectedIdx>=0){ana.annotations.splice(ana.
 $("fsClearBtn").onclick=()=>{if(confirm("すべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
 
 // ---- ピンチズーム（修正版：現在指中点でズーム＋パン）----
-anaCanvas.addEventListener("touchstart",e=>{if(e.touches.length===2){e.preventDefault();pinch.active=true;
-  ana.drawing=null;ana.dragging=false;ana.dragHandle=null;ptr.panning=false;ptr.moved=true;
-  const rect=anaCanvas.getBoundingClientRect();const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
-  pinch.lastDist=getTouchDist(e.touches);
-  pinch.lastMidX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;
-  pinch.lastMidY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;
-}},{passive:false});
-anaCanvas.addEventListener("touchmove",e=>{
-  if(pinch.active&&e.touches.length===2){
-    e.preventDefault();
-    const rect=anaCanvas.getBoundingClientRect();
-    const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
-    const curDist=getTouchDist(e.touches);
-    const curMidX=((e.touches[0].clientX+e.touches[1].clientX)/2-rect.left)*sx;
-    const curMidY=((e.touches[0].clientY+e.touches[1].clientY)/2-rect.top)*sy;
-    if(pinch.lastDist>10 && curDist>10){
-      // 前フレーム比の倍率変化（1フレームで最大±12%に制限＝暴走防止）
-      let f=curDist/pinch.lastDist;
-      f=Math.max(0.88,Math.min(1.12,f));
-      let ns=Math.max(1,Math.min(4,zoom.scale*f));
-      if(!isFinite(ns))ns=zoom.scale;
-      // ズーム中心を指の中点に固定
-      const ratio=ns/zoom.scale;
-      zoom.tx=curMidX-(curMidX-zoom.tx)*ratio;
-      zoom.ty=curMidY-(curMidY-zoom.ty)*ratio;
-      // 中点の移動分をパンとして反映
-      zoom.tx+=curMidX-pinch.lastMidX;
-      zoom.ty+=curMidY-pinch.lastMidY;
-      zoom.scale=ns;
-      clampAndResetZoom();
-    }
-    pinch.lastDist=curDist;pinch.lastMidX=curMidX;pinch.lastMidY=curMidY;
-  }
-},{passive:false});
-anaCanvas.addEventListener("touchend",e=>{
-  if(e.touches.length<2){
-    pinch.active=false;pinch.lastDist=0;clampAndResetZoom();
-    if(e.touches.length===1){ptr.moved=true;ptr.panning=false;}
-  }
-});
 
-// ---- ポインタイベント（1本指パン対応版）----
-function getEvtXY(e){return e.touches&&e.touches.length>0?{cx:e.touches[0].clientX,cy:e.touches[0].clientY}:{cx:e.clientX,cy:e.clientY};}
-const ptr={downCx:0,downCy:0,moved:false,panning:false,startTx:0,startTy:0};
-const TAP_THR=8; // px：これ以下の移動はタップ扱い
+
+// ---- 統合ポインタ入力（Pointer Events一本化：2本=ピンチ, 1本=ツール）----
+const activePointers=new Map(); // pointerId -> {cx,cy}
+const gesture={mode:"none",startDist:0,startScale:1,startTx:0,startTy:0,startMidCx:0,startMidCy:0,downCx:0,downCy:0,moved:false};
+const TAP_THR=8;
+
+function canvasScale(){const r=anaCanvas.getBoundingClientRect();return{sx:anaCanvas.width/r.width,sy:anaCanvas.height/r.height,rect:r};}
+function twoPointerData(){
+  const pts=[...activePointers.values()];
+  const dist=Math.hypot(pts[0].cx-pts[1].cx,pts[0].cy-pts[1].cy);
+  const midCx=(pts[0].cx+pts[1].cx)/2,midCy=(pts[0].cy+pts[1].cy)/2;
+  return{dist,midCx,midCy};
+}
 
 anaCanvas.addEventListener("pointerdown",e=>{
-  if(pinch.active)return;e.preventDefault();
-  const{cx,cy}=getEvtXY(e);const{nx,ny}=clientToNorm(cx,cy);
-  ptr.downCx=cx;ptr.downCy=cy;ptr.moved=false;ptr.panning=false;
-  ptr.startTx=zoom.tx;ptr.startTy=zoom.ty;
-  ana.lastNx=nx;ana.lastNy=ny;
-  // 描画ツールは即座にドラッグ開始（ズームより優先）
-  if(ana.tool==="line"){ana.drawing={type:"line",nx1:nx,ny1:ny,nx2:nx,ny2:ny};ana.dragging=true;return;}
-  if(ana.tool==="circle"){ana.drawing={type:"circle",ncx:nx,ncy:ny,nr:0};ana.dragging=true;return;}
-  // カーソルツール：ハンドルヒットなら即ドラッグ
-  if(ana.tool==="cursor"){
-    const handle=hitTestHandles(nx,ny);
-    if(handle){ana.dragHandle=handle;ana.dragging=true;return;}
+  e.preventDefault();
+  anaCanvas.setPointerCapture?.(e.pointerId);
+  activePointers.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
+
+  if(activePointers.size===2){
+    // ピンチ開始：進行中の描画/選択ドラッグを破棄
+    ana.drawing=null;ana.dragging=false;ana.dragHandle=null;
+    const{dist,midCx,midCy}=twoPointerData();
+    gesture.mode="pinch";
+    gesture.startDist=dist>10?dist:10;
+    gesture.startScale=zoom.scale;
+    gesture.startTx=zoom.tx;gesture.startTy=zoom.ty;
+    const{sx,sy,rect}=canvasScale();
+    gesture.startMidCx=(midCx-rect.left)*sx;
+    gesture.startMidCy=(midCy-rect.top)*sy;
+    return;
   }
-  // それ以外（init中含む）は、動けばパン・止まればタップ、をpointermove/upで判定
-},{passive:false});
+  if(activePointers.size!==1)return;
+
+  // 1本指：ツール or パン準備
+  gesture.mode="single";gesture.moved=false;
+  gesture.downCx=e.clientX;gesture.downCy=e.clientY;
+  gesture.startTx=zoom.tx;gesture.startTy=zoom.ty;
+  const{nx,ny}=clientToNorm(e.clientX,e.clientY);
+  ana.lastNx=nx;ana.lastNy=ny;
+  if(ana.tool==="line"){ana.drawing={type:"line",nx1:nx,ny1:ny,nx2:nx,ny2:ny};ana.dragging=true;}
+  else if(ana.tool==="circle"){ana.drawing={type:"circle",ncx:nx,ncy:ny,nr:0};ana.dragging=true;}
+  else if(ana.tool==="cursor"){const handle=hitTestHandles(nx,ny);if(handle){ana.dragHandle=handle;ana.dragging=true;}}
+});
 
 anaCanvas.addEventListener("pointermove",e=>{
-  if(pinch.active)return;e.preventDefault();
-  const{cx,cy}=getEvtXY(e);const{nx,ny}=clientToNorm(cx,cy);
-  const dx=cx-ptr.downCx,dy=cy-ptr.downCy;
-  if(!ptr.moved&&Math.hypot(dx,dy)>TAP_THR)ptr.moved=true;
+  if(!activePointers.has(e.pointerId))return;
+  e.preventDefault();
+  activePointers.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
+
+  // ピンチ処理
+  if(gesture.mode==="pinch"&&activePointers.size>=2){
+    const{dist,midCx,midCy}=twoPointerData();
+    let f=dist/gesture.startDist;
+    let ns=gesture.startScale*f;
+    if(!isFinite(ns))ns=zoom.scale;
+    ns=Math.max(1,Math.min(4,ns));
+    const{sx,sy,rect}=canvasScale();
+    const curMidX=(midCx-rect.left)*sx,curMidY=(midCy-rect.top)*sy;
+    // ピンチ中心を固定してズーム
+    const ratio=ns/gesture.startScale;
+    zoom.tx=curMidX-(gesture.startMidCx-gesture.startTx)*ratio;
+    zoom.ty=curMidY-(gesture.startMidCy-gesture.startTy)*ratio;
+    zoom.scale=ns;
+    clampZoom();
+    return;
+  }
+  if(gesture.mode!=="single")return;
+
+  const{nx,ny}=clientToNorm(e.clientX,e.clientY);
+  const dx=e.clientX-gesture.downCx,dy=e.clientY-gesture.downCy;
+  if(!gesture.moved&&Math.hypot(dx,dy)>TAP_THR)gesture.moved=true;
 
   // ハンドルドラッグ
   if(ana.tool==="cursor"&&ana.dragging&&ana.dragHandle&&ana.selectedIdx>=0){
@@ -589,48 +587,51 @@ anaCanvas.addEventListener("pointermove",e=>{
     else if(a.type==="circle"){if(ana.dragHandle==="center"){a.ncx+=dnx;a.ncy+=dny;}else if(ana.dragHandle==="rim"){const b=getVideoBaseRect();a.nr=Math.hypot((nx-a.ncx)*b.width,(ny-a.ncy)*b.height)/b.width;}}
     ana.lastNx=nx;ana.lastNy=ny;return;
   }
-  // 図形描画中
+  // 図形描画
   if(ana.drawing){
     if(ana.drawing.type==="line"){ana.drawing.nx2=nx;ana.drawing.ny2=ny;}
     else if(ana.drawing.type==="circle"){const b=getVideoBaseRect();ana.drawing.nr=Math.hypot((nx-ana.drawing.ncx)*b.width,(ny-ana.drawing.ncy)*b.height)/b.width;}
     ana.lastNx=nx;ana.lastNy=ny;return;
   }
-  // 1本指パン：ズーム中に指が動いたら（カーソル/init時）
-  if(ptr.moved&&zoom.scale>1.01&&e.pointerType!=="mouse"||ptr.moved&&zoom.scale>1.01){
-    ptr.panning=true;
-    const rect=anaCanvas.getBoundingClientRect();
-    const sx=anaCanvas.width/rect.width,sy=anaCanvas.height/rect.height;
-    zoom.tx=ptr.startTx+dx*sx;
-    zoom.ty=ptr.startTy+dy*sy;
-    clampAndResetZoom();
+  // 1本指パン（ズーム中・カーソルツール時のみ）
+  if(gesture.moved&&zoom.scale>1.01&&ana.tool==="cursor"){
+    const{sx,sy}=canvasScale();
+    zoom.tx=gesture.startTx+dx*sx;
+    zoom.ty=gesture.startTy+dy*sy;
+    clampZoom();
   }
   ana.lastNx=nx;ana.lastNy=ny;
-},{passive:false});
+});
 
-anaCanvas.addEventListener("pointerup",e=>{
-  e.preventDefault();
-  const{cx,cy}=getEvtXY(e);
+function endPointer(e){
+  activePointers.delete(e.pointerId);
+  anaCanvas.releasePointerCapture?.(e.pointerId);
   // 図形確定
   if(ana.drawing){
     const b=getVideoBaseRect();let ok=false;
     if(ana.drawing.type==="line"){const dx=(ana.drawing.nx2-ana.drawing.nx1)*b.width,dy=(ana.drawing.ny2-ana.drawing.ny1)*b.height;ok=Math.hypot(dx,dy)>6;}
     else if(ana.drawing.type==="circle")ok=(ana.drawing.nr??0)*b.width>5;
     if(ok)ana.annotations.push({...ana.drawing,color:ana.color});
-    ana.drawing=null;ana.dragging=false;ana.dragHandle=null;return;
+    ana.drawing=null;
   }
-  ana.dragging=false;ana.dragHandle=null;
-  // タップ判定（パンしていない＝移動が閾値以下）
-  if(!ptr.moved&&!ptr.panning){
-    const{nx,ny}=clientToNorm(cx,cy);
-    if(ana.tool==="cursor"){
-      const idx=hitTestAnnotations(nx,ny);
-      if(idx>=0){ana.selectedIdx=idx;updateSelDeleteBtn();}
-      else{ana.selectedIdx=-1;updateSelDeleteBtn();}
+  // タップ判定（カーソルツールで動いていない→選択 or パネル閉じ）
+  if(gesture.mode==="single"&&!gesture.moved&&ana.tool==="cursor"){
+    const{nx,ny}=clientToNorm(e.clientX,e.clientY);
+    const idx=hitTestAnnotations(nx,ny);
+    if(idx>=0){ana.selectedIdx=idx;updateSelDeleteBtn();}
+    else{
+      ana.selectedIdx=-1;updateSelDeleteBtn();
+      // 全画面でパネル開いてたら閉じる
+      if(isFs&&!$("fsDrawer").classList.contains("hidden-drawer")){$("fsDrawer").classList.add("hidden-drawer");$("fsPanelToggle").classList.remove("on");setTimeout(syncCanvas,60);}
     }
   }
-  ptr.panning=false;
-},{passive:false});
-anaCanvas.addEventListener("pointercancel",()=>{ana.dragging=false;ana.dragHandle=null;ana.drawing=null;ptr.panning=false;});
+  ana.dragging=false;ana.dragHandle=null;
+  // 残りポインタで状態リセット
+  if(activePointers.size===0){gesture.mode="none";clampZoom();}
+  else if(activePointers.size===1){gesture.mode="single";gesture.moved=true;const p=[...activePointers.values()][0];gesture.downCx=p.cx;gesture.downCy=p.cy;gesture.startTx=zoom.tx;gesture.startTy=zoom.ty;}
+}
+anaCanvas.addEventListener("pointerup",e=>{e.preventDefault();endPointer(e);});
+anaCanvas.addEventListener("pointercancel",e=>{endPointer(e);});
 
 // ---- ツール・カラー ----
 document.querySelectorAll(".tool-btn").forEach(b=>{b.onclick=()=>{ana.tool=b.dataset.tool;document.querySelectorAll(".tool-btn").forEach(x=>x.classList.toggle("active",x===b));};});
