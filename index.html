@@ -222,6 +222,99 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* サイドボタンも少しコンパクトに */
 .fs-side button{width:38px;height:38px;font-size:16px;background:rgba(8,12,10,.55);border-radius:10px;}
 .hidden{display:none!important;}
+
+/* ===== 比較タブ v3.0 ===== */
+#pane-cmp{position:relative;}
+.cmp-upload{flex:1;display:flex;flex-direction:column;gap:13px;padding:20px 16px;align-items:center;justify-content:center;}
+.cmp-hint{font-size:12px;color:var(--muted);text-align:center;line-height:1.6;max-width:420px;}
+.cmp-slot{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px;display:flex;flex-direction:column;gap:9px;}
+.cmp-slot h3{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.cmp-slot h3 .tag{font-size:10px;font-weight:700;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px;}
+.cmp-slot.self h3 .tag{color:var(--impact);border-color:rgba(184,255,60,.4);background:rgba(184,255,60,.12);}
+.cmp-slot-thumb{aspect-ratio:16/9;background:#000;border-radius:11px;overflow:hidden;display:none;align-items:center;justify-content:center;position:relative;}
+.cmp-slot-thumb video{width:100%;height:100%;object-fit:contain;}
+.cmp-slot.filled .cmp-slot-thumb{display:flex;}
+.cmp-slot-done{position:absolute;top:6px;right:6px;font-size:11px;font-weight:700;color:#0c1407;background:var(--impact);border-radius:999px;padding:2px 9px;}
+.cmp-slot-row{display:flex;gap:8px;}
+.cmp-slot-row button{flex:1;padding:11px 8px;font-size:13px;border-radius:11px;}
+/* メイン */
+.cmp-main{display:flex;flex-direction:column;flex:1;min-height:0;}
+.cmp-stage{position:relative;background:#000;overflow:hidden;flex:1;min-height:38vh;display:flex;touch-action:none;}
+.cmp-cell{position:relative;flex:1;min-width:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.cmp-cell video{width:100%;height:100%;object-fit:contain;display:block;}
+.cmp-cell .cell-lbl{position:absolute;top:7px;left:7px;z-index:3;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);pointer-events:none;}
+.cmp-cell.self .cell-lbl{color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-cell.ref .cell-lbl{color:var(--armed);border-color:rgba(245,166,35,.4);}
+.cmp-stage.split .cmp-cell.ref{border-left:1px solid var(--line);}
+.cmp-stage.overlay{display:block;}
+.cmp-stage.overlay .cmp-cell{position:absolute;inset:0;}
+.cmp-stage.overlay .cmp-cell.ref video{opacity:var(--ovl,.5);}
+/* ビューバー */
+.cmp-viewbar{display:flex;align-items:center;gap:6px;padding:8px 11px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;}
+.seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none;}
+.seg button{border:none;border-radius:0;background:transparent;padding:8px 13px;font-size:12px;color:var(--muted);flex:none;font-family:inherit;font-weight:600;}
+.seg button.active{background:rgba(184,255,60,.18);color:var(--impact);}
+.cmp-viewbar .mini{flex:0 0 auto;padding:8px 11px;font-size:12px;border-radius:10px;}
+.cmp-ovl-op{display:flex;align-items:center;gap:6px;flex:1;min-width:150px;}
+.cmp-ovl-op label{font-size:11px;color:var(--muted);white-space:nowrap;}
+.cmp-ovl-op input{flex:1;min-width:50px;}
+.cmp-ovl-op .mini{padding:7px 10px;}
+.cmp-spacer{flex:1;}
+/* マスターバー */
+.cmp-master{display:flex;flex-direction:column;gap:8px;padding:9px 12px;background:var(--panel);border-top:1px solid var(--line);}
+.cmp-phase-row{display:flex;align-items:center;gap:9px;}
+.cmp-phase-row input{flex:1;}
+.cmp-phase-lbl{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);white-space:nowrap;min-width:66px;text-align:right;}
+.cmp-play-row{display:flex;gap:5px;align-items:center;}
+.cmp-play-row .play-pause{flex:0 0 46px;font-size:17px;padding:9px;}
+.cmp-jump-row{display:flex;gap:4px;}
+.cmp-jump{flex:1;padding:7px 2px;font-size:11px;border-radius:9px;display:flex;flex-direction:column;align-items:center;gap:4px;line-height:1.1;}
+.cmp-jump .dots{display:flex;gap:3px;}
+.cmp-jump .dots i{width:5px;height:5px;border-radius:50%;background:var(--line);display:block;}
+.cmp-jump .dots i.a.on{background:var(--impact);}
+.cmp-jump .dots i.b.on{background:var(--armed);}
+.cmp-nudge-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+.cmp-nudge{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+.cmp-nudge b{font-weight:700;}
+.cmp-nudge.self b{color:var(--impact);}
+.cmp-nudge.ref b{color:var(--armed);}
+.cmp-nudge button{flex:0 0 34px;padding:6px;font-size:13px;border-radius:8px;}
+.cmp-nudge .ofs{font-family:"JetBrains Mono",monospace;min-width:50px;text-align:center;font-size:11px;color:var(--ink);cursor:pointer;}
+/* マークパネル */
+.cmp-mark{background:var(--bg);border-top:1px solid var(--line);}
+.cmp-mark-head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;}
+.cmp-mark-head h3{margin:0;font-size:13px;font-weight:700;}
+.cmp-mark-head .chev{color:var(--muted);font-size:11px;}
+.cmp-mark-body{display:none;flex-direction:column;gap:9px;padding:0 13px 13px;}
+.cmp-mark.open .cmp-mark-body{display:flex;}
+.cmp-mark-note{font-size:11px;color:var(--muted);line-height:1.55;}
+.cmp-tgt{display:flex;gap:5px;}
+.cmp-tgt button{flex:1;padding:9px;font-size:12px;border-radius:10px;font-weight:600;}
+.cmp-tgt button.self.active{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-tgt button.ref.active{background:rgba(245,166,35,.18);color:var(--armed);border-color:rgba(245,166,35,.4);}
+.cmp-mini-scrub{display:flex;align-items:center;gap:8px;}
+.cmp-mini-scrub input{flex:1;}
+.cmp-mini-time{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);min-width:52px;text-align:right;}
+.cmp-mini-step{display:flex;gap:4px;align-items:center;}
+.cmp-mini-step .frame-nav{flex:0 0 40px;padding:8px;font-size:15px;border-radius:9px;}
+.cmp-mini-step .step-btn{flex:1;padding:7px 3px;font-size:11px;border-radius:9px;}
+.cmp-markbtn-row{display:flex;gap:4px;}
+.cmp-markbtn{flex:1;padding:9px 2px;font-size:11px;border-radius:9px;line-height:1.15;}
+.cmp-markbtn.marked{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-mark.tgt-ref .cmp-markbtn.marked{background:rgba(245,166,35,.16);color:var(--armed);border-color:rgba(245,166,35,.4);}
+.cmp-clear{align-self:flex-start;padding:7px 12px;font-size:11px;border-radius:9px;color:var(--muted);flex:none;}
+/* クリップピッカー */
+.cmp-picker{position:fixed;inset:0;z-index:320;background:rgba(4,6,5,.8);backdrop-filter:blur(6px);display:flex;align-items:flex-end;}
+.cmp-picker-panel{background:var(--panel);border-top-left-radius:20px;border-top-right-radius:20px;border-top:1px solid var(--line);width:100%;max-height:80vh;display:flex;flex-direction:column;padding:14px 14px max(16px,env(safe-area-inset-bottom));}
+.cmp-picker-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;}
+.cmp-picker-head h3{margin:0;font-size:14px;font-weight:700;}
+.cmp-picker-head button{flex:0 0 40px;padding:8px;border-radius:10px;}
+.cmp-picker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;overflow-y:auto;}
+.cmp-pick-item{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;}
+.cmp-pick-item video{width:100%;aspect-ratio:3/4;object-fit:cover;background:#000;display:block;}
+.cmp-pick-item span{display:block;font-size:11px;color:var(--muted);padding:5px 7px;font-family:"JetBrains Mono",monospace;}
+@media (orientation:landscape){.cmp-stage{min-height:46vh;}.cmp-master{gap:6px;padding:7px 12px;}}
+@media (max-width:400px){.tab-btn{padding-left:13px;padding-right:13px;}}
 </style>
 </head>
 <body>
@@ -233,10 +326,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v2.9</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.0</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
+    <button class="tab-btn" data-tab="cmp">比較</button>
   </nav>
 </header>
 
@@ -343,6 +437,81 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   </div>
 </div>
 
+<!-- 比較タブ -->
+<div class="pane hidden" id="pane-cmp">
+  <div class="cmp-upload" id="cmpUpload">
+    <div class="cmp-hint">自分のスイングとお手本を1本ずつ選んでください。両方そろうと比較を開始します。</div>
+    <div class="cmp-slot self" id="cmpSlotA">
+      <h3>自分のスイング<span class="tag">A</span></h3>
+      <div class="cmp-slot-thumb" id="cmpThumbA"><video muted playsinline></video><span class="cmp-slot-done">✓ 読込済み</span></div>
+      <div class="cmp-slot-row"><button data-pick="A" data-src="clip">録画クリップ</button><button data-pick="A" data-src="file">ファイルから</button></div>
+    </div>
+    <div class="cmp-slot" id="cmpSlotB">
+      <h3>お手本<span class="tag">B</span></h3>
+      <div class="cmp-slot-thumb" id="cmpThumbB"><video muted playsinline></video><span class="cmp-slot-done">✓ 読込済み</span></div>
+      <div class="cmp-slot-row"><button data-pick="B" data-src="clip">録画クリップ</button><button data-pick="B" data-src="file">ファイルから</button></div>
+    </div>
+  </div>
+  <input type="file" id="cmpFileInput" accept="video/*" hidden>
+
+  <div class="cmp-main hidden" id="cmpMain">
+    <div class="cmp-stage split" id="cmpStage">
+      <div class="cmp-cell self" id="cmpCellA"><span class="cell-lbl">自分</span><video id="cmpVidA" playsinline muted preload="auto"></video></div>
+      <div class="cmp-cell ref" id="cmpCellB"><span class="cell-lbl">お手本</span><video id="cmpVidB" playsinline muted preload="auto"></video></div>
+    </div>
+    <div class="cmp-viewbar">
+      <div class="seg" id="cmpViewSeg"><button data-view="split" class="active">左右</button><button data-view="overlay">重ね</button></div>
+      <button class="mini" id="cmpSwap">⇄ 入替</button>
+      <div class="cmp-ovl-op" id="cmpOvlOp" style="display:none">
+        <label>透明度</label><input type="range" id="cmpOpacity" min="15" max="85" value="50">
+        <button class="mini" id="cmpOvlScaleDown">－</button><button class="mini" id="cmpOvlScaleUp">＋</button><button class="mini" id="cmpOvlReset">位置↺</button>
+      </div>
+      <div class="cmp-spacer"></div>
+      <button class="mini" id="cmpChange" style="color:var(--muted)">動画変更</button>
+    </div>
+    <div class="cmp-master">
+      <div class="cmp-phase-row"><input type="range" id="cmpPhaseSeek" min="0" max="1000" value="0"><span class="cmp-phase-lbl" id="cmpPhaseLbl">0%</span></div>
+      <div class="cmp-play-row">
+        <button class="play-pause" id="cmpPlayBtn">▶</button>
+        <button class="speed-btn cmp-rate active" data-rate="1">1x</button>
+        <button class="speed-btn cmp-rate" data-rate="0.5">½</button>
+        <button class="speed-btn cmp-rate" data-rate="0.33">⅓</button>
+        <button class="speed-btn cmp-rate" data-rate="0.2">⅕</button>
+        <button class="speed-btn cmp-rate" data-rate="0.1">1/10</button>
+      </div>
+      <div class="cmp-jump-row" id="cmpJumpRow"></div>
+      <div class="cmp-nudge-row">
+        <span style="font-size:11px;color:var(--muted)">ズレ微調整:</span>
+        <div class="cmp-nudge self"><b>自分</b><button data-nudge="A" data-dir="-1">◀</button><span class="ofs" id="cmpOfsA">+0.00s</span><button data-nudge="A" data-dir="1">▶</button></div>
+        <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
+      </div>
+    </div>
+    <div class="cmp-mark open" id="cmpMark">
+      <div class="cmp-mark-head" id="cmpMarkHead"><h3>節目をマーク</h3><span class="chev">▲ たたむ</span></div>
+      <div class="cmp-mark-body">
+        <div class="cmp-mark-note">下のバーで動画を目的の位置に合わせ、節目ボタンを押すと記録されます。自分・お手本それぞれに設定してください（共通で2つ以上そろうと同期）。</div>
+        <div class="cmp-tgt" id="cmpTgt"><button class="self active" data-tgt="A">自分を合わせる</button><button class="ref" data-tgt="B">お手本を合わせる</button></div>
+        <div class="cmp-mini-scrub"><input type="range" id="cmpMiniSeek" min="0" max="1000" value="0"><span class="cmp-mini-time" id="cmpMiniTime">0:00.0</span></div>
+        <div class="cmp-mini-step">
+          <button class="step-btn cmp-mstep active" data-mstep="0.05">1/20s</button>
+          <button class="step-btn cmp-mstep" data-mstep="0.02">1/50s</button>
+          <button class="step-btn cmp-mstep" data-mstep="0.01">1/100s</button>
+          <button class="frame-nav" id="cmpMiniPrev">◀</button><button class="frame-nav" id="cmpMiniNext">▶</button>
+        </div>
+        <div class="cmp-markbtn-row" id="cmpMarkBtnRow"></div>
+        <button class="cmp-clear" id="cmpClearMarks">このサイドのマークを消去</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp-picker hidden" id="cmpPicker">
+    <div class="cmp-picker-panel">
+      <div class="cmp-picker-head"><h3>録画クリップを選択</h3><button id="cmpPickerClose">✕</button></div>
+      <div class="cmp-picker-grid" id="cmpPickerGrid"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
@@ -373,8 +542,9 @@ async function captureClip(){if(recMode!=="idle"||!running)return;recMode="captu
 $("playerClose").onclick=()=>{$("playerModal").classList.add("hidden");$("playerVideo").pause();$("playerVideo").src="";};
 function openPlayer(url){$("playerVideo").src=url;$("playerModal").classList.remove("hidden");$("playerVideo").play().catch(()=>{});}
 
-let clipSeq=0;
+let clipSeq=0;const clipStore=[];
 function addClip(blob,type){clipSeq++;const url=URL.createObjectURL(blob);const ext=type.includes("mp4")?"mp4":"webm";const now=new Date();const pad=x=>String(x).padStart(2,"0");const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;const fname=`swing_${stamp}.${ext}`;const tl=`${pad(now.getHours())}:${pad(now.getMinutes())}`;const sk=Math.round(blob.size/1024);
+  clipStore.push({seq:clipSeq,url,blob,type,tl});
   const card=document.createElement("div");card.className="clip";
   // サムネイル用の静止画をcanvasで取得
   const thumbC=document.createElement("canvas");thumbC.style.cssText="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;";
@@ -389,8 +559,8 @@ function addClip(blob,type){clipSeq++;const url=URL.createObjectURL(blob);const 
   thumb.onclick=()=>openPlayer(url);
   card.querySelector(".save").onclick=e=>{e.stopPropagation();saveClip(blob,fname,type);};
   card.querySelector(".analyze").onclick=e=>{e.stopPropagation();loadAnaBlob(blob);document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab==="ana"));$("pane-rec").classList.add("hidden");$("pane-ana").classList.remove("hidden");};
-  card.querySelector(".del").onclick=e=>{e.stopPropagation();URL.revokeObjectURL(url);card.remove();refreshClipUI();};
-  els.grid.prepend(card);while(els.grid.children.length>MAX_CLIPS)els.grid.lastElementChild.remove();refreshClipUI();}
+  card.querySelector(".del").onclick=e=>{e.stopPropagation();URL.revokeObjectURL(url);card.remove();const si=clipStore.findIndex(c=>c.url===url);if(si>=0)clipStore.splice(si,1);refreshClipUI();};
+  els.grid.prepend(card);while(els.grid.children.length>MAX_CLIPS)els.grid.lastElementChild.remove();while(clipStore.length>MAX_CLIPS)clipStore.shift();refreshClipUI();}
 function refreshClipUI(){const n=els.grid.children.length;els.clipCount.textContent=n;els.grid.classList.toggle("hidden",n===0);els.emptyClips.classList.toggle("hidden",n!==0);}
 async function saveClip(blob,fname,type){const file=new File([blob],fname,{type});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname});return;}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
 function setRecStatus(){els.status.classList.remove("armed","rec");if(!running){els.statusText.textContent="停止中";els.cd.textContent="";return;}if(recMode==="capturing"){els.status.classList.add("rec");els.statusText.textContent="切り出し中";els.cd.textContent="";return;}if(autoDetect){els.status.classList.add("armed");els.statusText.textContent="検知待機";}else{els.statusText.textContent="手動モード";}els.cd.textContent="";}
@@ -676,6 +846,170 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   document.querySelectorAll(".fs-step").forEach(x=>x.classList.toggle("active",x===b));
   document.querySelectorAll("[data-step]").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.step)===stepSize));
 };});
+
+// ===== 比較タブ v3.0 =====
+(function(){
+  const EVENTS=[["address","アドレス"],["top","トップ"],["impact","インパクト"],["follow","フォロー"],["finish","フィニッシュ"]];
+  const JP=Object.fromEntries(EVENTS);
+  const CMP_FULL_MS=3000;
+  const vA=$("cmpVidA"),vB=$("cmpVidB");
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const sideEl=s=>s==="A"?vA:vB;
+
+  // 節目ボタン生成
+  $("cmpJumpRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-jump" data-ev="${k}"><span>${n}</span><span class="dots"><i class="a"></i><i class="b"></i></span></button>`).join("");
+  $("cmpMarkBtnRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-markbtn" data-mev="${k}">${n}</button>`).join("");
+
+  // ---- 動画ロード ----
+  function primeVideo(v){v.muted=true;const p=v.play();if(p&&p.then)p.then(()=>v.pause()).catch(()=>{});else{try{v.pause();}catch(e){}}}
+  function updateSlot(side){
+    const filled=cmp.loaded[side];
+    const slot=$(side==="A"?"cmpSlotA":"cmpSlotB");
+    slot.classList.toggle("filled",filled);
+    if(filled){const th=$(side==="A"?"cmpThumbA":"cmpThumbB").querySelector("video");th.src=cmp.src[side];th.load();}
+    slot.querySelectorAll(".cmp-slot-row button").forEach(b=>b.textContent=b.dataset.src==="clip"?(filled?"別のクリップ":"録画クリップ"):(filled?"別のファイル":"ファイルから"));
+  }
+  function showLoadError(side){
+    let el=$("cmpLoadErr");
+    if(!el){el=document.createElement("div");el.id="cmpLoadErr";el.style.cssText="font-size:12px;line-height:1.5;color:#ffd7d2;background:rgba(255,107,94,.1);border:1px solid rgba(255,107,94,.4);border-radius:12px;padding:10px 13px;max-width:420px;width:100%;text-align:left;";$("cmpUpload").insertBefore(el,$("cmpSlotA"));}
+    el.textContent=(side==="A"?"自分":"お手本")+"の動画を読み込めませんでした。別の動画で試すか、iOSは「ファイルを選択」からmp4/movを選んでみてください。";
+  }
+  function clearLoadError(){const e=$("cmpLoadErr");if(e)e.remove();}
+  // 切り離した<video>で先にメタデータを確認（隠れ要素だとiOSが読み込まない対策）
+  function loadSide(side,src){
+    cmp.src[side]=src;
+    const probe=document.createElement("video");probe.muted=true;probe.playsInline=true;probe.preload="metadata";
+    let done=false;
+    const ok=()=>{
+      if(done)return;if(!(probe.duration>0||probe.videoWidth>0))return;done=true;clearTimeout(to);
+      clearLoadError();
+      cmp.dur[side]=probe.duration||0;probe.removeAttribute("src");
+      const v=sideEl(side);v.muted=true;v.src=src;v.load();
+      cmp.loaded[side]=true;cmp.marks[side]={};cmp.offset[side]=0;
+      updateSlot(side);
+      if(cmp.loaded.A&&cmp.loaded.B)enterMain();
+    };
+    const bad=()=>{if(done)return;done=true;clearTimeout(to);showLoadError(side);};
+    probe.addEventListener("loadedmetadata",ok);
+    probe.addEventListener("loadeddata",ok);
+    probe.addEventListener("error",bad);
+    probe.src=src;probe.load();
+    var to=setTimeout(()=>{(probe.duration>0||probe.videoWidth>0)?ok():bad();},6000);
+  }
+  function enterMain(){
+    $("cmpUpload").classList.add("hidden");
+    $("cmpMain").classList.remove("hidden");
+    cmp.phase=0;layoutStage();
+    setTimeout(()=>{primeVideo(vA);primeVideo(vB);applyPhase();updateMiniUI();refreshAll();},80);
+  }
+
+  // ---- クリップピッカー ----
+  let pickingFor="A";
+  function openPicker(side){
+    pickingFor=side;const grid=$("cmpPickerGrid");grid.innerHTML="";
+    if(!clipStore.length){grid.innerHTML='<div class="empty-clips">録画タブでスイングを撮ると、ここから選べます。</div>';}
+    else{[...clipStore].reverse().forEach(c=>{const d=document.createElement("div");d.className="cmp-pick-item";d.innerHTML=`<video muted playsinline preload="metadata"></video><span>#${c.seq} · ${c.tl}</span>`;d.querySelector("video").src=c.url;d.onclick=()=>{loadSide(side,URL.createObjectURL(c.blob));closePicker();};grid.appendChild(d);});}
+    $("cmpPicker").classList.remove("hidden");
+  }
+  function closePicker(){$("cmpPicker").classList.add("hidden");}
+  $("cmpPickerClose").onclick=closePicker;
+  document.querySelectorAll("#cmpUpload [data-pick]").forEach(b=>{b.onclick=()=>{const side=b.dataset.pick;if(b.dataset.src==="clip")openPicker(side);else{pickingFor=side;$("cmpFileInput").click();}};});
+  $("cmpFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadSide(pickingFor,URL.createObjectURL(f));e.target.value="";};
+
+  // ---- フェーズ→時間マッピング ----
+  function activeEvents(){return EVENTS.map(([k])=>k).filter(k=>cmp.marks.A[k]!=null&&cmp.marks.B[k]!=null);}
+  function nodesFor(side){
+    const act=activeEvents();
+    if(act.length>=2)return{phases:act.map((_,i)=>i/(act.length-1)),times:act.map(k=>cmp.marks[side][k])};
+    const dur=sideEl(side).duration||cmp.dur[side]||1;return{phases:[0,1],times:[0,dur]};
+  }
+  function phaseToTime(side,phase){
+    const{phases,times}=nodesFor(side);let t=times[times.length-1];
+    if(phase<=phases[0])t=times[0];
+    else if(phase<phases[phases.length-1]){for(let i=0;i<phases.length-1;i++){if(phase>=phases[i]&&phase<=phases[i+1]){const span=(phases[i+1]-phases[i])||1;t=times[i]+((phase-phases[i])/span)*(times[i+1]-times[i]);break;}}}
+    t+=cmp.offset[side];const dur=sideEl(side).duration||cmp.dur[side]||0;return Math.max(0,Math.min(dur||t,t));
+  }
+  function setTime(v,t){if(isFinite(t)&&Math.abs(v.currentTime-t)>0.001){try{v.currentTime=t;}catch(e){}}}
+  function applyPhase(){if(cmp.loaded.A)setTime(vA,phaseToTime("A",cmp.phase));if(cmp.loaded.B)setTime(vB,phaseToTime("B",cmp.phase));updatePhaseUI();}
+
+  // ---- 同期再生 ----
+  function setPlayBtn(on){$("cmpPlayBtn").textContent=on?"⏸":"▶";}
+  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);if(cmp.phase>=1){cmp.phase=1;applyPhase();stopPlay();return;}applyPhase();}
+  function startPlay(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
+  function stopPlay(){cmp.playing=false;if(cmp.raf)cancelAnimationFrame(cmp.raf);cmp.raf=null;setPlayBtn(false);}
+  $("cmpPlayBtn").onclick=()=>{cmp.playing?stopPlay():startPlay();};
+  document.querySelectorAll(".cmp-rate").forEach(b=>{b.onclick=()=>{cmp.rate=parseFloat(b.dataset.rate);document.querySelectorAll(".cmp-rate").forEach(x=>x.classList.toggle("active",x===b));};});
+  $("cmpPhaseSeek").oninput=e=>{stopPlay();cmp.phase=parseInt(e.target.value)/1000;applyPhase();};
+
+  // ---- フェーズ表示 ----
+  function phaseLabel(){
+    const act=activeEvents();
+    if(act.length>=2){for(let i=0;i<act.length;i++){if(Math.abs(cmp.phase-i/(act.length-1))<0.012)return JP[act[i]];}}
+    else{if(cmp.phase<0.012)return"開始";if(cmp.phase>0.988)return"終了";}
+    return Math.round(cmp.phase*100)+"%";
+  }
+  function updatePhaseUI(){$("cmpPhaseSeek").value=Math.round(cmp.phase*1000);$("cmpPhaseLbl").textContent=phaseLabel();}
+
+  // ---- 節目ジャンプ ----
+  $("cmpJumpRow").querySelectorAll(".cmp-jump").forEach(b=>{b.onclick=()=>{const act=activeEvents();const i=act.indexOf(b.dataset.ev);if(i<0)return;stopPlay();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();};});
+
+  // ---- ズレ微調整 ----
+  document.querySelectorAll("[data-nudge]").forEach(b=>{b.onclick=()=>{const s=b.dataset.nudge;cmp.offset[s]+=parseInt(b.dataset.dir)*cmp.step;applyPhase();updateNudgeUI();};});
+  $("cmpOfsA").onclick=()=>{cmp.offset.A=0;applyPhase();updateNudgeUI();};
+  $("cmpOfsB").onclick=()=>{cmp.offset.B=0;applyPhase();updateNudgeUI();};
+  function fmtOfs(x){return(x>=0?"+":"")+x.toFixed(2)+"s";}
+  function updateNudgeUI(){$("cmpOfsA").textContent=fmtOfs(cmp.offset.A);$("cmpOfsB").textContent=fmtOfs(cmp.offset.B);}
+
+  // ---- ビュー / 重ね ----
+  function applyOverlayTransform(){vB.style.transform=`translate(${cmp.ovl.x}px,${cmp.ovl.y}px) scale(${cmp.ovl.s})`;}
+  function layoutStage(){const st=$("cmpStage");const ov=cmp.view==="overlay";st.classList.toggle("overlay",ov);st.classList.toggle("split",!ov);$("cmpOvlOp").style.display=ov?"flex":"none";if(ov)applyOverlayTransform();else vB.style.transform="";document.querySelectorAll("#cmpViewSeg button").forEach(x=>x.classList.toggle("active",x.dataset.view===cmp.view));}
+  document.querySelectorAll("#cmpViewSeg button").forEach(b=>{b.onclick=()=>{cmp.view=b.dataset.view;layoutStage();};});
+  $("cmpStage").style.setProperty("--ovl","0.5");
+  $("cmpOpacity").oninput=e=>{$("cmpStage").style.setProperty("--ovl",(parseInt(e.target.value)/100).toString());};
+  $("cmpOvlScaleUp").onclick=()=>{cmp.ovl.s=Math.min(3,cmp.ovl.s*1.08);applyOverlayTransform();};
+  $("cmpOvlScaleDown").onclick=()=>{cmp.ovl.s=Math.max(0.4,cmp.ovl.s/1.08);applyOverlayTransform();};
+  $("cmpOvlReset").onclick=()=>{cmp.ovl={x:0,y:0,s:1};applyOverlayTransform();};
+  let ovlDrag=null;
+  $("cmpStage").addEventListener("pointerdown",e=>{if(cmp.view!=="overlay")return;ovlDrag={x:e.clientX,y:e.clientY,ox:cmp.ovl.x,oy:cmp.ovl.y};});
+  $("cmpStage").addEventListener("pointermove",e=>{if(!ovlDrag)return;cmp.ovl.x=ovlDrag.ox+(e.clientX-ovlDrag.x);cmp.ovl.y=ovlDrag.oy+(e.clientY-ovlDrag.y);applyOverlayTransform();});
+  window.addEventListener("pointerup",()=>{ovlDrag=null;});
+
+  // ---- 入替 ----
+  $("cmpSwap").onclick=()=>{
+    if(!(cmp.loaded.A&&cmp.loaded.B))return;
+    [cmp.src.A,cmp.src.B]=[cmp.src.B,cmp.src.A];
+    [cmp.dur.A,cmp.dur.B]=[cmp.dur.B,cmp.dur.A];
+    [cmp.marks.A,cmp.marks.B]=[cmp.marks.B,cmp.marks.A];
+    [cmp.offset.A,cmp.offset.B]=[cmp.offset.B,cmp.offset.A];
+    vA.src=cmp.src.A;vB.src=cmp.src.B;vA.load();vB.load();
+    let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);applyPhase();updateMiniUI();refreshAll();}};
+    vA.onloadedmetadata=on;vB.onloadedmetadata=on;
+  };
+
+  // ---- マーキング ----
+  document.querySelectorAll("#cmpTgt button").forEach(b=>{b.onclick=()=>{cmp.target=b.dataset.tgt;document.querySelectorAll("#cmpTgt button").forEach(x=>x.classList.toggle("active",x===b));$("cmpMark").classList.toggle("tgt-ref",cmp.target==="B");updateMiniUI();refreshMarkBtns();};});
+  $("cmpMiniSeek").oninput=e=>{const v=sideEl(cmp.target);if(!isNaN(v.duration)){v.pause();setTime(v,(parseInt(e.target.value)/1000)*v.duration);$("cmpMiniTime").textContent=fmtTime(v.currentTime);}};
+  $("cmpMiniPrev").onclick=()=>{const v=sideEl(cmp.target);v.pause();setTime(v,Math.max(0,v.currentTime-cmp.step));updateMiniUI();};
+  $("cmpMiniNext").onclick=()=>{const v=sideEl(cmp.target);v.pause();setTime(v,Math.min(v.duration||0,v.currentTime+cmp.step));updateMiniUI();};
+  document.querySelectorAll(".cmp-mstep").forEach(b=>{b.onclick=()=>{cmp.step=parseFloat(b.dataset.mstep);document.querySelectorAll(".cmp-mstep").forEach(x=>x.classList.toggle("active",x===b));};});
+  $("cmpMarkBtnRow").querySelectorAll(".cmp-markbtn").forEach(b=>{b.onclick=()=>{const v=sideEl(cmp.target);cmp.marks[cmp.target][b.dataset.mev]=v.currentTime;refreshAll();};});
+  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshAll();};
+  $("cmpMarkHead").onclick=()=>{$("cmpMark").classList.toggle("open");};
+
+  function fmtTime(t){if(isNaN(t)||t==null)t=0;const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,"0");return m+":"+s;}
+  function updateMiniUI(){const v=sideEl(cmp.target);if(v.duration)$("cmpMiniSeek").value=Math.round((v.currentTime/v.duration)*1000);$("cmpMiniTime").textContent=fmtTime(v.currentTime);}
+
+  // ---- リフレッシュ ----
+  function refreshJump(){$("cmpJumpRow").querySelectorAll(".cmp-jump").forEach(b=>{const k=b.dataset.ev,am=cmp.marks.A[k]!=null,bm=cmp.marks.B[k]!=null;b.querySelector(".a").classList.toggle("on",am);b.querySelector(".b").classList.toggle("on",bm);b.disabled=!(am&&bm);});}
+  function refreshMarkBtns(){$("cmpMarkBtnRow").querySelectorAll(".cmp-markbtn").forEach(b=>{b.classList.toggle("marked",cmp.marks[cmp.target][b.dataset.mev]!=null);});}
+  function refreshAll(){refreshJump();refreshMarkBtns();updateNudgeUI();updatePhaseUI();}
+
+  // ---- 動画変更 ----
+  $("cmpChange").onclick=()=>{stopPlay();cmp.loaded={A:false,B:false};cmp.src={A:null,B:null};cmp.dur={A:0,B:0};cmp.marks={A:{},B:{}};cmp.offset={A:0,B:0};cmp.phase=0;clearLoadError();vA.removeAttribute("src");vB.removeAttribute("src");vA.load();vB.load();$("cmpMain").classList.add("hidden");$("cmpUpload").classList.remove("hidden");updateSlot("A");updateSlot("B");};
+
+  // タブ離脱で再生停止
+  document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopPlay();}));
+})();
 
 // ---- 起動 ----
 checkSupport();
