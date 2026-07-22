@@ -282,11 +282,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-nudge .ofs{font-family:"JetBrains Mono",monospace;min-width:50px;text-align:center;font-size:11px;color:var(--ink);cursor:pointer;}
 /* マークパネル */
 .cmp-mark{background:var(--bg);border-top:1px solid var(--line);}
-.cmp-mark-head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;}
-.cmp-mark-head h3{margin:0;font-size:13px;font-weight:700;}
-.cmp-mark-head .chev{color:var(--muted);font-size:11px;}
-.cmp-mark-body{display:none;flex-direction:column;gap:9px;padding:0 13px 13px;}
-.cmp-mark.open .cmp-mark-body{display:flex;}
+.cmp-modetabs{display:flex;gap:5px;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line);}
+.cmp-modetabs button{flex:1;padding:9px;font-size:12px;font-weight:600;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-family:inherit;}
+.cmp-modetabs button.active{background:rgba(184,255,60,.15);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-mark{flex-direction:column;gap:9px;padding:11px 13px 13px;background:var(--bg);border-top:1px solid var(--line);}
 .cmp-mark-note{font-size:11px;color:var(--muted);line-height:1.55;}
 .cmp-tgt{display:flex;gap:5px;}
 .cmp-tgt button{flex:1;padding:9px;font-size:12px;border-radius:10px;font-weight:600;}
@@ -469,7 +468,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="cmp-spacer"></div>
       <button class="mini" id="cmpChange" style="color:var(--muted)">動画変更</button>
     </div>
-    <div class="cmp-master">
+    <div class="cmp-modetabs" id="cmpModeTabs">
+      <button data-mode="mark" class="active">節目マーク</button>
+      <button data-mode="play">同期・比較</button>
+    </div>
+    <div class="cmp-master" id="cmpMasterPane" style="display:none">
       <div class="cmp-phase-row"><input type="range" id="cmpPhaseSeek" min="0" max="1000" value="0"><span class="cmp-phase-lbl" id="cmpPhaseLbl">0%</span></div>
       <div class="cmp-play-row">
         <button class="play-pause" id="cmpPlayBtn">▶</button>
@@ -486,21 +489,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
       </div>
     </div>
-    <div class="cmp-mark open" id="cmpMark">
-      <div class="cmp-mark-head" id="cmpMarkHead"><h3>節目をマーク</h3><span class="chev">▲ たたむ</span></div>
-      <div class="cmp-mark-body">
-        <div class="cmp-mark-note">下のバーで動画を目的の位置に合わせ、節目ボタンを押すと記録されます。自分・お手本それぞれに設定してください（共通で2つ以上そろうと同期）。</div>
-        <div class="cmp-tgt" id="cmpTgt"><button class="self active" data-tgt="A">自分を合わせる</button><button class="ref" data-tgt="B">お手本を合わせる</button></div>
-        <div class="cmp-mini-scrub"><input type="range" id="cmpMiniSeek" min="0" max="1000" value="0"><span class="cmp-mini-time" id="cmpMiniTime">0:00.0</span></div>
-        <div class="cmp-mini-step">
-          <button class="step-btn cmp-mstep active" data-mstep="0.05">1/20s</button>
-          <button class="step-btn cmp-mstep" data-mstep="0.02">1/50s</button>
-          <button class="step-btn cmp-mstep" data-mstep="0.01">1/100s</button>
-          <button class="frame-nav" id="cmpMiniPrev">◀</button><button class="frame-nav" id="cmpMiniNext">▶</button>
-        </div>
-        <div class="cmp-markbtn-row" id="cmpMarkBtnRow"></div>
-        <button class="cmp-clear" id="cmpClearMarks">このサイドのマークを消去</button>
+    <div class="cmp-mark" id="cmpMark" style="display:flex">
+      <div class="cmp-mark-note">動画を目的の位置に合わせ、節目ボタンを押すと記録されます。自分・お手本それぞれに設定してください（共通で2つ以上そろうと同期）。</div>
+      <div class="cmp-tgt" id="cmpTgt"><button class="self active" data-tgt="A">自分を合わせる</button><button class="ref" data-tgt="B">お手本を合わせる</button></div>
+      <div class="cmp-mini-scrub"><input type="range" id="cmpMiniSeek" min="0" max="1000" value="0"><span class="cmp-mini-time" id="cmpMiniTime">0:00.0</span></div>
+      <div class="cmp-mini-step">
+        <button class="step-btn cmp-mstep active" data-mstep="0.05">1/20s</button>
+        <button class="step-btn cmp-mstep" data-mstep="0.02">1/50s</button>
+        <button class="step-btn cmp-mstep" data-mstep="0.01">1/100s</button>
+        <button class="frame-nav" id="cmpMiniPrev">◀</button><button class="frame-nav" id="cmpMiniNext">▶</button>
       </div>
+      <div class="cmp-markbtn-row" id="cmpMarkBtnRow"></div>
+      <button class="cmp-clear" id="cmpClearMarks">このサイドのマークを消去</button>
     </div>
   </div>
 
@@ -853,7 +853,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",mode:"mark",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
   const sideEl=s=>s==="A"?vA:vB;
 
   // 節目ボタン生成
@@ -899,7 +899,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function enterMain(){
     $("cmpUpload").classList.add("hidden");
     $("cmpMain").classList.remove("hidden");
-    cmp.phase=0;layoutStage();
+    cmp.phase=0;layoutStage();setMode(cmp.mode);
     setTimeout(()=>{primeVideo(vA);primeVideo(vB);applyPhase();updateMiniUI();refreshAll();},80);
   }
 
@@ -994,7 +994,8 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   document.querySelectorAll(".cmp-mstep").forEach(b=>{b.onclick=()=>{cmp.step=parseFloat(b.dataset.mstep);document.querySelectorAll(".cmp-mstep").forEach(x=>x.classList.toggle("active",x===b));};});
   $("cmpMarkBtnRow").querySelectorAll(".cmp-markbtn").forEach(b=>{b.onclick=()=>{const v=sideEl(cmp.target);cmp.marks[cmp.target][b.dataset.mev]=v.currentTime;refreshAll();};});
   $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshAll();};
-  $("cmpMarkHead").onclick=()=>{$("cmpMark").classList.toggle("open");};
+  function setMode(m){cmp.mode=m;document.querySelectorAll("#cmpModeTabs button").forEach(x=>x.classList.toggle("active",x.dataset.mode===m));$("cmpMasterPane").style.display=m==="play"?"flex":"none";$("cmpMark").style.display=m==="mark"?"flex":"none";if(m==="mark"){stopPlay();updateMiniUI();}}
+  document.querySelectorAll("#cmpModeTabs button").forEach(b=>{b.onclick=()=>setMode(b.dataset.mode);});
 
   function fmtTime(t){if(isNaN(t)||t==null)t=0;const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,"0");return m+":"+s;}
   function updateMiniUI(){const v=sideEl(cmp.target);if(v.duration)$("cmpMiniSeek").value=Math.round((v.currentTime/v.duration)*1000);$("cmpMiniTime").textContent=fmtTime(v.currentTime);}
