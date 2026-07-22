@@ -260,48 +260,39 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-ovl-op input{flex:1;min-width:50px;}
 .cmp-ovl-op .mini{padding:7px 10px;}
 .cmp-spacer{flex:1;}
-/* マスターバー */
-.cmp-master{display:flex;flex-direction:column;gap:8px;padding:9px 12px;background:var(--panel);border-top:1px solid var(--line);}
-.cmp-phase-row{display:flex;align-items:center;gap:9px;}
-.cmp-phase-row input{flex:1;}
-.cmp-phase-lbl{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);white-space:nowrap;min-width:66px;text-align:right;}
-.cmp-play-row{display:flex;gap:5px;align-items:center;}
-.cmp-play-row .play-pause{flex:0 0 46px;font-size:17px;padding:9px;}
-.cmp-jump-row{display:flex;gap:4px;}
-.cmp-jump{flex:1;padding:7px 2px;font-size:11px;border-radius:9px;display:flex;flex-direction:column;align-items:center;gap:4px;line-height:1.1;}
-.cmp-jump .dots{display:flex;gap:3px;}
-.cmp-jump .dots i{width:5px;height:5px;border-radius:50%;background:var(--line);display:block;}
-.cmp-jump .dots i.a.on{background:var(--impact);}
-.cmp-jump .dots i.b.on{background:var(--armed);}
-.cmp-nudge-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+/* ===== 統合コントロール（コンパクト）===== */
+.cmp-ctrl{display:flex;flex-direction:column;gap:6px;padding:7px 11px 9px;background:var(--panel);border-top:1px solid var(--line);}
+.cmp-target{display:flex;gap:4px;}
+.cmp-target button{flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-family:inherit;}
+.cmp-target button.self.active{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-target button.ref.active{background:rgba(245,166,35,.18);color:var(--armed);border-color:rgba(245,166,35,.4);}
+.cmp-target button[data-tgt="sync"].active{background:rgba(184,255,60,.14);color:var(--impact);border-color:rgba(184,255,60,.35);}
+.cmp-seek-row{display:flex;align-items:center;gap:8px;}
+.cmp-seek-row input{flex:1;}
+.cmp-seek-lbl{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink);white-space:nowrap;min-width:58px;text-align:right;}
+.cmp-play-row{display:flex;gap:4px;align-items:center;}
+.cmp-play-row .play-pause{flex:0 0 40px;font-size:15px;padding:7px;}
+.cmp-play-row .frame-nav{flex:0 0 34px;padding:7px;font-size:14px;border-radius:8px;}
+.cmp-play-row .speed-btn{flex:1;padding:7px 2px;font-size:11px;border-radius:8px;}
+.cmp-node-row{display:flex;gap:4px;}
+.cmp-node{flex:1;padding:6px 2px;font-size:11px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.05;}
+.cmp-node .dots{display:flex;gap:3px;}
+.cmp-node .dots i{width:5px;height:5px;border-radius:50%;background:var(--line);display:block;}
+.cmp-node .dots i.a.on{background:var(--impact);}
+.cmp-node .dots i.b.on{background:var(--armed);}
+.cmp-node.marked{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-ctrl.tgt-ref .cmp-node.marked{background:rgba(245,166,35,.16);color:var(--armed);border-color:rgba(245,166,35,.4);}
+.cmp-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cmp-sub-hint{font-size:11px;color:var(--muted);}
+.cmp-step-mini{display:flex;gap:4px;flex:1;min-width:120px;}
+.cmp-step-mini .step-btn{flex:1;padding:6px 2px;font-size:11px;border-radius:8px;}
+.cmp-clear{padding:6px 11px;font-size:11px;border-radius:8px;color:var(--muted);flex:none;}
 .cmp-nudge{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
 .cmp-nudge b{font-weight:700;}
 .cmp-nudge.self b{color:var(--impact);}
 .cmp-nudge.ref b{color:var(--armed);}
-.cmp-nudge button{flex:0 0 34px;padding:6px;font-size:13px;border-radius:8px;}
-.cmp-nudge .ofs{font-family:"JetBrains Mono",monospace;min-width:50px;text-align:center;font-size:11px;color:var(--ink);cursor:pointer;}
-/* マークパネル */
-.cmp-mark{background:var(--bg);border-top:1px solid var(--line);}
-.cmp-modetabs{display:flex;gap:5px;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line);}
-.cmp-modetabs button{flex:1;padding:9px;font-size:12px;font-weight:600;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-family:inherit;}
-.cmp-modetabs button.active{background:rgba(184,255,60,.15);color:var(--impact);border-color:rgba(184,255,60,.4);}
-.cmp-mark{flex-direction:column;gap:9px;padding:11px 13px 13px;background:var(--bg);border-top:1px solid var(--line);}
-.cmp-mark-note{font-size:11px;color:var(--muted);line-height:1.55;}
-.cmp-tgt{display:flex;gap:5px;}
-.cmp-tgt button{flex:1;padding:9px;font-size:12px;border-radius:10px;font-weight:600;}
-.cmp-tgt button.self.active{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
-.cmp-tgt button.ref.active{background:rgba(245,166,35,.18);color:var(--armed);border-color:rgba(245,166,35,.4);}
-.cmp-mini-scrub{display:flex;align-items:center;gap:8px;}
-.cmp-mini-scrub input{flex:1;}
-.cmp-mini-time{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);min-width:52px;text-align:right;}
-.cmp-mini-step{display:flex;gap:4px;align-items:center;}
-.cmp-mini-step .frame-nav{flex:0 0 40px;padding:8px;font-size:15px;border-radius:9px;}
-.cmp-mini-step .step-btn{flex:1;padding:7px 3px;font-size:11px;border-radius:9px;}
-.cmp-markbtn-row{display:flex;gap:4px;}
-.cmp-markbtn{flex:1;padding:9px 2px;font-size:11px;border-radius:9px;line-height:1.15;}
-.cmp-markbtn.marked{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
-.cmp-mark.tgt-ref .cmp-markbtn.marked{background:rgba(245,166,35,.16);color:var(--armed);border-color:rgba(245,166,35,.4);}
-.cmp-clear{align-self:flex-start;padding:7px 12px;font-size:11px;border-radius:9px;color:var(--muted);flex:none;}
+.cmp-nudge button{flex:0 0 32px;padding:6px;font-size:12px;border-radius:8px;}
+.cmp-nudge .ofs{font-family:"JetBrains Mono",monospace;min-width:48px;text-align:center;font-size:11px;color:var(--ink);cursor:pointer;}
 /* クリップピッカー */
 .cmp-picker{position:fixed;inset:0;z-index:320;background:rgba(4,6,5,.8);backdrop-filter:blur(6px);display:flex;align-items:flex-end;}
 .cmp-picker-panel{background:var(--panel);border-top-left-radius:20px;border-top-right-radius:20px;border-top:1px solid var(--line);width:100%;max-height:80vh;display:flex;flex-direction:column;padding:14px 14px max(16px,env(safe-area-inset-bottom));}
@@ -468,39 +459,38 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="cmp-spacer"></div>
       <button class="mini" id="cmpChange" style="color:var(--muted)">動画変更</button>
     </div>
-    <div class="cmp-modetabs" id="cmpModeTabs">
-      <button data-mode="mark" class="active">節目マーク</button>
-      <button data-mode="play">同期・比較</button>
-    </div>
-    <div class="cmp-master" id="cmpMasterPane" style="display:none">
-      <div class="cmp-phase-row"><input type="range" id="cmpPhaseSeek" min="0" max="1000" value="0"><span class="cmp-phase-lbl" id="cmpPhaseLbl">0%</span></div>
+    <div class="cmp-ctrl" id="cmpCtrl">
+      <div class="cmp-target" id="cmpTarget">
+        <button data-tgt="A" class="self active">自分</button>
+        <button data-tgt="B" class="ref">お手本</button>
+        <button data-tgt="sync">同期</button>
+      </div>
+      <div class="cmp-seek-row"><input type="range" id="cmpSeek" min="0" max="1000" value="0"><span class="cmp-seek-lbl" id="cmpTime">0:00.0</span></div>
       <div class="cmp-play-row">
-        <button class="play-pause" id="cmpPlayBtn">▶</button>
+        <button class="play-pause" id="cmpPlay">▶</button>
+        <button class="frame-nav" id="cmpStepBack">◀</button>
+        <button class="frame-nav" id="cmpStepFwd">▶</button>
         <button class="speed-btn cmp-rate active" data-rate="1">1x</button>
         <button class="speed-btn cmp-rate" data-rate="0.5">½</button>
         <button class="speed-btn cmp-rate" data-rate="0.33">⅓</button>
         <button class="speed-btn cmp-rate" data-rate="0.2">⅕</button>
         <button class="speed-btn cmp-rate" data-rate="0.1">1/10</button>
       </div>
-      <div class="cmp-jump-row" id="cmpJumpRow"></div>
-      <div class="cmp-nudge-row">
-        <span style="font-size:11px;color:var(--muted)">ズレ微調整:</span>
+      <div class="cmp-node-row" id="cmpNodeRow"></div>
+      <div class="cmp-sub" id="cmpMarkSub">
+        <span class="cmp-sub-hint">節目ボタン=いまの位置にマーク</span>
+        <div class="cmp-step-mini">
+          <button class="step-btn cmp-mstep active" data-mstep="0.05">1/20s</button>
+          <button class="step-btn cmp-mstep" data-mstep="0.02">1/50s</button>
+          <button class="step-btn cmp-mstep" data-mstep="0.01">1/100s</button>
+        </div>
+        <button class="cmp-clear" id="cmpClearMarks">マーク消去</button>
+      </div>
+      <div class="cmp-sub" id="cmpSyncSub" style="display:none">
+        <span class="cmp-sub-hint">ズレ微調整:</span>
         <div class="cmp-nudge self"><b>自分</b><button data-nudge="A" data-dir="-1">◀</button><span class="ofs" id="cmpOfsA">+0.00s</span><button data-nudge="A" data-dir="1">▶</button></div>
         <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
       </div>
-    </div>
-    <div class="cmp-mark" id="cmpMark" style="display:flex">
-      <div class="cmp-mark-note">動画を目的の位置に合わせ、節目ボタンを押すと記録されます。自分・お手本それぞれに設定してください（共通で2つ以上そろうと同期）。</div>
-      <div class="cmp-tgt" id="cmpTgt"><button class="self active" data-tgt="A">自分を合わせる</button><button class="ref" data-tgt="B">お手本を合わせる</button></div>
-      <div class="cmp-mini-scrub"><input type="range" id="cmpMiniSeek" min="0" max="1000" value="0"><span class="cmp-mini-time" id="cmpMiniTime">0:00.0</span></div>
-      <div class="cmp-mini-step">
-        <button class="step-btn cmp-mstep active" data-mstep="0.05">1/20s</button>
-        <button class="step-btn cmp-mstep" data-mstep="0.02">1/50s</button>
-        <button class="step-btn cmp-mstep" data-mstep="0.01">1/100s</button>
-        <button class="frame-nav" id="cmpMiniPrev">◀</button><button class="frame-nav" id="cmpMiniNext">▶</button>
-      </div>
-      <div class="cmp-markbtn-row" id="cmpMarkBtnRow"></div>
-      <button class="cmp-clear" id="cmpClearMarks">このサイドのマークを消去</button>
     </div>
   </div>
 
@@ -853,12 +843,13 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",mode:"mark",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
-  const sideEl=s=>s==="A"?vA:vB;
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const sideEl=s=>s==="B"?vB:vA;
+  const isSync=()=>cmp.target==="sync";
+  const curV=()=>cmp.target==="B"?vB:vA;
 
   // 節目ボタン生成
-  $("cmpJumpRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-jump" data-ev="${k}"><span>${n}</span><span class="dots"><i class="a"></i><i class="b"></i></span></button>`).join("");
-  $("cmpMarkBtnRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-markbtn" data-mev="${k}">${n}</button>`).join("");
+  $("cmpNodeRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-node" data-ev="${k}"><span>${n}</span><span class="dots"><i class="a"></i><i class="b"></i></span></button>`).join("");
 
   // ---- 動画ロード ----
   function primeVideo(v){v.muted=true;const p=v.play();if(p&&p.then)p.then(()=>v.pause()).catch(()=>{});else{try{v.pause();}catch(e){}}}
@@ -875,7 +866,6 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     el.textContent=(side==="A"?"自分":"お手本")+"の動画を読み込めませんでした。別の動画で試すか、iOSは「ファイルを選択」からmp4/movを選んでみてください。";
   }
   function clearLoadError(){const e=$("cmpLoadErr");if(e)e.remove();}
-  // 切り離した<video>で先にメタデータを確認（隠れ要素だとiOSが読み込まない対策）
   function loadSide(side,src){
     cmp.src[side]=src;
     const probe=document.createElement("video");probe.muted=true;probe.playsInline=true;probe.preload="metadata";
@@ -899,8 +889,8 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function enterMain(){
     $("cmpUpload").classList.add("hidden");
     $("cmpMain").classList.remove("hidden");
-    cmp.phase=0;layoutStage();setMode(cmp.mode);
-    setTimeout(()=>{primeVideo(vA);primeVideo(vB);applyPhase();updateMiniUI();refreshAll();},80);
+    cmp.phase=0;layoutStage();
+    setTimeout(()=>{primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();},80);
   }
 
   // ---- クリップピッカー ----
@@ -930,28 +920,58 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     t+=cmp.offset[side];const dur=sideEl(side).duration||cmp.dur[side]||0;return Math.max(0,Math.min(dur||t,t));
   }
   function setTime(v,t){if(isFinite(t)&&Math.abs(v.currentTime-t)>0.001){try{v.currentTime=t;}catch(e){}}}
-  function applyPhase(){if(cmp.loaded.A)setTime(vA,phaseToTime("A",cmp.phase));if(cmp.loaded.B)setTime(vB,phaseToTime("B",cmp.phase));updatePhaseUI();}
+  function applyPhase(){if(cmp.loaded.A)setTime(vA,phaseToTime("A",cmp.phase));if(cmp.loaded.B)setTime(vB,phaseToTime("B",cmp.phase));if(isSync())updateTransportUI();}
 
-  // ---- 同期再生 ----
-  function setPlayBtn(on){$("cmpPlayBtn").textContent=on?"⏸":"▶";}
-  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);if(cmp.phase>=1){cmp.phase=1;applyPhase();stopPlay();return;}applyPhase();}
-  function startPlay(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
-  function stopPlay(){cmp.playing=false;if(cmp.raf)cancelAnimationFrame(cmp.raf);cmp.raf=null;setPlayBtn(false);}
-  $("cmpPlayBtn").onclick=()=>{cmp.playing?stopPlay():startPlay();};
-  document.querySelectorAll(".cmp-rate").forEach(b=>{b.onclick=()=>{cmp.rate=parseFloat(b.dataset.rate);document.querySelectorAll(".cmp-rate").forEach(x=>x.classList.toggle("active",x===b));};});
-  $("cmpPhaseSeek").oninput=e=>{stopPlay();cmp.phase=parseInt(e.target.value)/1000;applyPhase();};
+  // ---- 同期再生（rAFでフェーズを進め両動画をシーク）----
+  function setPlayBtn(on){$("cmpPlay").textContent=on?"⏸":"▶";}
+  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);if(cmp.phase>=1){cmp.phase=1;applyPhase();stopSync();return;}applyPhase();}
+  function startSync(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
+  function stopSync(){cmp.playing=false;if(cmp.raf)cancelAnimationFrame(cmp.raf);cmp.raf=null;setPlayBtn(false);}
+  function stopAll(){stopSync();vA.pause();vB.pause();setPlayBtn(false);}
 
-  // ---- フェーズ表示 ----
+  // ---- 再生/スクラブ/コマ送り（対象＝自分/お手本/同期で切替）----
+  function togglePlay(){
+    if(isSync()){cmp.playing?stopSync():startSync();}
+    else{const v=curV();if(v.paused){v.playbackRate=Math.max(0.25,cmp.rate);const p=v.play();if(p&&p.catch)p.catch(()=>{});setPlayBtn(true);}else{v.pause();setPlayBtn(false);}}
+  }
+  $("cmpPlay").onclick=togglePlay;
+  $("cmpSeek").oninput=e=>{const val=parseInt(e.target.value)/1000;
+    if(isSync()){stopSync();cmp.phase=val;applyPhase();}
+    else{const v=curV();if(!isNaN(v.duration)){v.pause();setTime(v,val*v.duration);}updateTransportUI();}
+  };
+  function step(dir){
+    if(isSync()){stopSync();cmp.phase=Math.max(0,Math.min(1,cmp.phase+dir*0.005));applyPhase();}
+    else{const v=curV();v.pause();setTime(v,Math.max(0,Math.min(v.duration||0,v.currentTime+dir*cmp.step)));updateTransportUI();}
+  }
+  $("cmpStepBack").onclick=()=>step(-1);
+  $("cmpStepFwd").onclick=()=>step(1);
+  document.querySelectorAll(".cmp-rate").forEach(b=>{b.onclick=()=>{cmp.rate=parseFloat(b.dataset.rate);document.querySelectorAll(".cmp-rate").forEach(x=>x.classList.toggle("active",x===b));if(!isSync()&&!curV().paused)curV().playbackRate=Math.max(0.25,cmp.rate);};});
+  document.querySelectorAll(".cmp-mstep").forEach(b=>{b.onclick=()=>{cmp.step=parseFloat(b.dataset.mstep);document.querySelectorAll(".cmp-mstep").forEach(x=>x.classList.toggle("active",x===b));};});
+  [vA,vB].forEach(v=>{
+    v.addEventListener("timeupdate",()=>{if(!isSync()&&curV()===v)updateTransportUI();});
+    v.addEventListener("pause",()=>{if(!isSync()&&curV()===v)setPlayBtn(false);});
+    v.addEventListener("ended",()=>{if(!isSync()&&curV()===v)setPlayBtn(false);});
+  });
+
+  // ---- 節目ボタン（自分/お手本＝マーク、同期＝ジャンプ）----
+  $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{b.onclick=()=>{const k=b.dataset.ev;
+    if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();}
+    else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();}
+  };});
+  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshNodes();};
+
+  // ---- 表示ラベル ----
   function phaseLabel(){
     const act=activeEvents();
     if(act.length>=2){for(let i=0;i<act.length;i++){if(Math.abs(cmp.phase-i/(act.length-1))<0.012)return JP[act[i]];}}
     else{if(cmp.phase<0.012)return"開始";if(cmp.phase>0.988)return"終了";}
     return Math.round(cmp.phase*100)+"%";
   }
-  function updatePhaseUI(){$("cmpPhaseSeek").value=Math.round(cmp.phase*1000);$("cmpPhaseLbl").textContent=phaseLabel();}
-
-  // ---- 節目ジャンプ ----
-  $("cmpJumpRow").querySelectorAll(".cmp-jump").forEach(b=>{b.onclick=()=>{const act=activeEvents();const i=act.indexOf(b.dataset.ev);if(i<0)return;stopPlay();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();};});
+  function fmtTime(t){if(isNaN(t)||t==null)t=0;const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,"0");return m+":"+s;}
+  function updateTransportUI(){
+    if(isSync()){$("cmpSeek").value=Math.round(cmp.phase*1000);$("cmpTime").textContent=phaseLabel();}
+    else{const v=curV();$("cmpSeek").value=v.duration?Math.round((v.currentTime/v.duration)*1000):0;$("cmpTime").textContent=fmtTime(v.currentTime);}
+  }
 
   // ---- ズレ微調整 ----
   document.querySelectorAll("[data-nudge]").forEach(b=>{b.onclick=()=>{const s=b.dataset.nudge;cmp.offset[s]+=parseInt(b.dataset.dir)*cmp.step;applyPhase();updateNudgeUI();};});
@@ -959,6 +979,19 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   $("cmpOfsB").onclick=()=>{cmp.offset.B=0;applyPhase();updateNudgeUI();};
   function fmtOfs(x){return(x>=0?"+":"")+x.toFixed(2)+"s";}
   function updateNudgeUI(){$("cmpOfsA").textContent=fmtOfs(cmp.offset.A);$("cmpOfsB").textContent=fmtOfs(cmp.offset.B);}
+
+  // ---- 対象切替（自分/お手本/同期）----
+  function setTarget(t){
+    cmp.target=t;stopAll();
+    document.querySelectorAll("#cmpTarget button").forEach(x=>x.classList.toggle("active",x.dataset.tgt===t));
+    const sync=t==="sync";
+    $("cmpSyncSub").style.display=sync?"flex":"none";
+    $("cmpMarkSub").style.display=sync?"none":"flex";
+    $("cmpCtrl").classList.toggle("tgt-ref",t==="B");
+    if(sync){cmp.phase=0;applyPhase();}
+    updateTransportUI();refreshNodes();
+  }
+  document.querySelectorAll("#cmpTarget button").forEach(b=>{b.onclick=()=>setTarget(b.dataset.tgt);});
 
   // ---- ビュー / 重ね ----
   function applyOverlayTransform(){vB.style.transform=`translate(${cmp.ovl.x}px,${cmp.ovl.y}px) scale(${cmp.ovl.s})`;}
@@ -982,34 +1015,28 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     [cmp.marks.A,cmp.marks.B]=[cmp.marks.B,cmp.marks.A];
     [cmp.offset.A,cmp.offset.B]=[cmp.offset.B,cmp.offset.A];
     vA.src=cmp.src.A;vB.src=cmp.src.B;vA.load();vB.load();
-    let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);applyPhase();updateMiniUI();refreshAll();}};
+    let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();}};
     vA.onloadedmetadata=on;vB.onloadedmetadata=on;
   };
 
-  // ---- マーキング ----
-  document.querySelectorAll("#cmpTgt button").forEach(b=>{b.onclick=()=>{cmp.target=b.dataset.tgt;document.querySelectorAll("#cmpTgt button").forEach(x=>x.classList.toggle("active",x===b));$("cmpMark").classList.toggle("tgt-ref",cmp.target==="B");updateMiniUI();refreshMarkBtns();};});
-  $("cmpMiniSeek").oninput=e=>{const v=sideEl(cmp.target);if(!isNaN(v.duration)){v.pause();setTime(v,(parseInt(e.target.value)/1000)*v.duration);$("cmpMiniTime").textContent=fmtTime(v.currentTime);}};
-  $("cmpMiniPrev").onclick=()=>{const v=sideEl(cmp.target);v.pause();setTime(v,Math.max(0,v.currentTime-cmp.step));updateMiniUI();};
-  $("cmpMiniNext").onclick=()=>{const v=sideEl(cmp.target);v.pause();setTime(v,Math.min(v.duration||0,v.currentTime+cmp.step));updateMiniUI();};
-  document.querySelectorAll(".cmp-mstep").forEach(b=>{b.onclick=()=>{cmp.step=parseFloat(b.dataset.mstep);document.querySelectorAll(".cmp-mstep").forEach(x=>x.classList.toggle("active",x===b));};});
-  $("cmpMarkBtnRow").querySelectorAll(".cmp-markbtn").forEach(b=>{b.onclick=()=>{const v=sideEl(cmp.target);cmp.marks[cmp.target][b.dataset.mev]=v.currentTime;refreshAll();};});
-  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshAll();};
-  function setMode(m){cmp.mode=m;document.querySelectorAll("#cmpModeTabs button").forEach(x=>x.classList.toggle("active",x.dataset.mode===m));$("cmpMasterPane").style.display=m==="play"?"flex":"none";$("cmpMark").style.display=m==="mark"?"flex":"none";if(m==="mark"){stopPlay();updateMiniUI();}}
-  document.querySelectorAll("#cmpModeTabs button").forEach(b=>{b.onclick=()=>setMode(b.dataset.mode);});
-
-  function fmtTime(t){if(isNaN(t)||t==null)t=0;const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,"0");return m+":"+s;}
-  function updateMiniUI(){const v=sideEl(cmp.target);if(v.duration)$("cmpMiniSeek").value=Math.round((v.currentTime/v.duration)*1000);$("cmpMiniTime").textContent=fmtTime(v.currentTime);}
-
   // ---- リフレッシュ ----
-  function refreshJump(){$("cmpJumpRow").querySelectorAll(".cmp-jump").forEach(b=>{const k=b.dataset.ev,am=cmp.marks.A[k]!=null,bm=cmp.marks.B[k]!=null;b.querySelector(".a").classList.toggle("on",am);b.querySelector(".b").classList.toggle("on",bm);b.disabled=!(am&&bm);});}
-  function refreshMarkBtns(){$("cmpMarkBtnRow").querySelectorAll(".cmp-markbtn").forEach(b=>{b.classList.toggle("marked",cmp.marks[cmp.target][b.dataset.mev]!=null);});}
-  function refreshAll(){refreshJump();refreshMarkBtns();updateNudgeUI();updatePhaseUI();}
+  function refreshNodes(){
+    const sync=isSync();
+    $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
+      const k=b.dataset.ev,am=cmp.marks.A[k]!=null,bm=cmp.marks.B[k]!=null;
+      b.querySelector(".a").classList.toggle("on",am);
+      b.querySelector(".b").classList.toggle("on",bm);
+      b.classList.toggle("marked",!sync&&(cmp.target==="A"?am:bm));
+      b.disabled=sync&&!(am&&bm);
+    });
+  }
+  function refreshAll(){refreshNodes();updateNudgeUI();updateTransportUI();}
 
   // ---- 動画変更 ----
-  $("cmpChange").onclick=()=>{stopPlay();cmp.loaded={A:false,B:false};cmp.src={A:null,B:null};cmp.dur={A:0,B:0};cmp.marks={A:{},B:{}};cmp.offset={A:0,B:0};cmp.phase=0;clearLoadError();vA.removeAttribute("src");vB.removeAttribute("src");vA.load();vB.load();$("cmpMain").classList.add("hidden");$("cmpUpload").classList.remove("hidden");updateSlot("A");updateSlot("B");};
+  $("cmpChange").onclick=()=>{stopAll();cmp.loaded={A:false,B:false};cmp.src={A:null,B:null};cmp.dur={A:0,B:0};cmp.marks={A:{},B:{}};cmp.offset={A:0,B:0};cmp.phase=0;clearLoadError();vA.removeAttribute("src");vB.removeAttribute("src");vA.load();vB.load();$("cmpMain").classList.add("hidden");$("cmpUpload").classList.remove("hidden");updateSlot("A");updateSlot("B");};
 
   // タブ離脱で再生停止
-  document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopPlay();}));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();}));
 })();
 
 // ---- 起動 ----
