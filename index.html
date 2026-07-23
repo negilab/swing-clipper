@@ -335,7 +335,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.6</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.7</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -768,14 +768,18 @@ function twoPointerData(){
 
 anaCanvas.addEventListener("pointerdown",e=>{
   e.preventDefault();
+  // 新しい操作の1本目なら、前回の指情報が残っていても捨てる
+  if(e.isPrimary)activePointers.clear();
+  try{anaCanvas.setPointerCapture(e.pointerId);}catch(err){}
   activePointers.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
 
   if(activePointers.size===2){
     // ピンチ開始：進行中の描画/選択ドラッグを破棄
     ana.drawing=null;ana.dragging=false;ana.dragHandle=null;
     const{dist,midCx,midCy}=twoPointerData();
+    if(!(dist>=20)){gesture.mode="single";return;}
     gesture.mode="pinch";
-    gesture.startDist=dist>10?dist:10;
+    gesture.startDist=dist;
     gesture.startScale=zoom.scale;
     gesture.startTx=zoom.tx;gesture.startTy=zoom.ty;
     const{sx,sy,rect}=canvasScale();
@@ -805,6 +809,7 @@ anaCanvas.addEventListener("pointermove",e=>{
   if(gesture.mode==="pinch"&&activePointers.size>=2){
     if(!(anaVideo.videoWidth>0&&anaVideo.videoHeight>0))return;
     const{dist,midCx,midCy}=twoPointerData();
+    if(!(gesture.startDist>=20)||!(dist>0)){gesture.startDist=dist>=20?dist:20;gesture.startScale=zoom.scale;return;}
     let ns=gesture.startScale*(dist/gesture.startDist);
     if(!isFinite(ns)||isNaN(ns))ns=gesture.startScale;
     ns=Math.max(1,Math.min(4,ns));
@@ -877,6 +882,12 @@ function endPointer(e){
 }
 anaCanvas.addEventListener("pointerup",e=>{e.preventDefault();endPointer(e);});
 anaCanvas.addEventListener("pointercancel",e=>{endPointer(e);});
+// キャンバス外で指を離した場合の取りこぼしを拾う（放置すると次回ピンチが暴発する）
+["pointerup","pointercancel"].forEach(ev=>window.addEventListener(ev,e=>{
+  if(!activePointers.has(e.pointerId))return;
+  activePointers.delete(e.pointerId);
+  if(activePointers.size===0){gesture.mode="none";ana.dragging=false;ana.dragHandle=null;clampZoom();}
+}));
 
 // ---- ツール・カラー ----
 document.querySelectorAll(".tool-btn").forEach(b=>{b.onclick=()=>{ana.tool=b.dataset.tool;document.querySelectorAll(".tool-btn").forEach(x=>x.classList.toggle("active",x===b));};});
@@ -932,7 +943,7 @@ $("anaNodeDelBtn").onclick=()=>{if(anaMenuEv!=null){delete anaMarks[anaMenuEv];a
 $("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
   const k=b.dataset.ev;
   const wasLong=longPress(b,()=>{if(anaMarks[k]==null)return false;anaOpenMenu(k);});
-  b.onclick=()=>{if(wasLong())return;anaMarks[k]=anaVideo.currentTime;anaRefreshNodes();anaTouch();};
+  b.onclick=()=>{if(wasLong())return;anaStopSeg();anaVideo.pause();anaMarks[k]=anaVideo.currentTime;anaRefreshNodes();anaTouch();};
 });
 holdRepeat($("prevFrameBtn"),()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);});
 holdRepeat($("nextFrameBtn"),()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;});
@@ -1166,7 +1177,13 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     b.onclick=()=>{
       if(fired){fired=false;return;}
       if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.seg=(cmp.seg===k)?null:k;cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();refreshNodes();}
-      else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();saveMeta();}
+      else{
+        stopAll();
+        const v=curV(),t=v.currentTime;
+        cmp.marks[cmp.target][k]=t;
+        setTime(v,t);
+        refreshNodes();updateTransportUI();saveMeta();
+      }
     };
   });
   $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshNodes();saveMeta();};
