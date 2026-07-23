@@ -240,7 +240,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* メイン */
 .cmp-main{display:flex;flex-direction:column;flex:1;min-height:0;}
 .cmp-stage{position:relative;background:#000;overflow:hidden;flex:1;min-height:38vh;display:flex;touch-action:none;}
-.cmp-cell{position:relative;flex:1;min-width:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.cmp-cell{position:relative;flex:1;min-width:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none;}
 .cmp-cell video{width:100%;height:100%;object-fit:contain;display:block;}
 .cmp-draw{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;display:block;}
 .cmp-stage.draw .cmp-draw{pointer-events:auto;touch-action:none;}
@@ -254,6 +254,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 #cmpDrawToggle.on{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .cell-bar{position:absolute;top:6px;left:6px;right:6px;z-index:4;display:flex;align-items:center;gap:6px;}
 .cmp-cell .cell-lbl{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);pointer-events:none;flex:0 0 auto;}
+.cell-zoom{flex:0 0 auto;font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:rgba(8,12,10,.72);backdrop-filter:blur(6px);border:1px solid rgba(184,255,60,.4);color:var(--impact);}
 .cell-pick{margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(8,12,10,.72);backdrop-filter:blur(6px);border:1px solid var(--line);color:var(--ink);}
 .cell-empty{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;font-size:12px;line-height:1.6;color:var(--muted);}
 .cmp-cell.filled .cell-empty{display:none;}
@@ -345,7 +346,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.9</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.0</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -478,13 +479,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <video id="cmpVidA" playsinline muted preload="auto"></video>
         <canvas class="cmp-draw" id="cmpCanA"></canvas>
         <div class="cell-empty" id="cmpEmptyA">右上の「選択」から<br>自分のスイングを選ぶ</div>
-        <div class="cell-bar"><span class="cell-lbl">自分</span><button class="cell-pick" data-pick="A">選択</button></div>
+        <div class="cell-bar"><span class="cell-lbl">自分</span><button class="cell-zoom" id="cmpZoomResetA" style="display:none">1:1</button><button class="cell-pick" data-pick="A">選択</button></div>
       </div>
       <div class="cmp-cell ref" id="cmpCellB">
         <video id="cmpVidB" playsinline muted preload="auto"></video>
         <canvas class="cmp-draw" id="cmpCanB"></canvas>
         <div class="cell-empty" id="cmpEmptyB">右上の「選択」から<br>お手本を選ぶ</div>
-        <div class="cell-bar"><span class="cell-lbl">お手本</span><button class="cell-pick" data-pick="B">選択</button></div>
+        <div class="cell-bar"><span class="cell-lbl">お手本</span><button class="cell-zoom" id="cmpZoomResetB" style="display:none">1:1</button><button class="cell-pick" data-pick="B">選択</button></div>
       </div>
     </div>
     <div class="cmp-viewbar">
@@ -1036,7 +1037,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       cmp.dur[side]=probe.duration||0;probe.removeAttribute("src");
       const v=sideEl(side);v.muted=true;v.src=src;v.load();
       cmp.loaded[side]=true;
-      if(!keep){cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;saveVid(side);saveMeta();}
+      if(!keep){cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;resetZoom(side);saveVid(side);saveMeta();}
       primeVideo(v);refreshCells();
       if(!keep)setTarget(side);else{layoutStage();refreshAll();}
     };
@@ -1083,7 +1084,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     cmp.loaded[side]=false;cmp.src[side]=null;cmp.blob[side]=null;cmp.dur[side]=0;cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;cmp.seg=null;
     const v=sideEl(side);v.removeAttribute("src");v.load();
     idbDel(side==="A"?"vidA":"vidB");saveMeta();
-    clearLoadError(side);refreshCells();refreshAll();
+    resetZoom(side);clearLoadError(side);refreshCells();refreshAll();
   }
   $("cmpFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadSide(pickingFor,f);e.target.value="";};
 
@@ -1242,7 +1243,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- ビュー / 重ね ----
   function applyOverlayTransform(){const t=`translate(${cmp.ovl.x}px,${cmp.ovl.y}px) scale(${cmp.ovl.s})`;vB.style.transform=t;$("cmpCanB").style.transform=t;}
-  function layoutStage(){const st=$("cmpStage");const ov=cmp.view==="overlay";st.classList.toggle("overlay",ov);st.classList.toggle("split",!ov);$("cmpOvlOp").style.display=ov?"flex":"none";if(ov)applyOverlayTransform();else{vB.style.transform="";$("cmpCanB").style.transform="";}sizeCanvases();document.querySelectorAll("#cmpViewSeg button").forEach(x=>x.classList.toggle("active",x.dataset.view===cmp.view));}
+  function layoutStage(){const st=$("cmpStage");const ov=cmp.view==="overlay";st.classList.toggle("overlay",ov);st.classList.toggle("split",!ov);$("cmpOvlOp").style.display=ov?"flex":"none";applyAllTransforms();sizeCanvases();document.querySelectorAll("#cmpViewSeg button").forEach(x=>x.classList.toggle("active",x.dataset.view===cmp.view));}
   document.querySelectorAll("#cmpViewSeg button").forEach(b=>{b.onclick=()=>{cmp.view=b.dataset.view;layoutStage();saveMeta();};});
   $("cmpStage").style.setProperty("--ovl","0.5");
   $("cmpOpacity").oninput=e=>{$("cmpStage").style.setProperty("--ovl",(parseInt(e.target.value)/100).toString());};
@@ -1262,6 +1263,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     [cmp.dur.A,cmp.dur.B]=[cmp.dur.B,cmp.dur.A];
     [cmp.marks.A,cmp.marks.B]=[cmp.marks.B,cmp.marks.A];
     [cmp.ann.A,cmp.ann.B]=[cmp.ann.B,cmp.ann.A];
+    [zoomS.A,zoomS.B]=[zoomS.B,zoomS.A];
     [cmp.offset.A,cmp.offset.B]=[cmp.offset.B,cmp.offset.A];
     vA.src=cmp.src.A;vB.src=cmp.src.B;vA.load();vB.load();
     let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();saveVid("A");saveVid("B");saveMeta();}};
@@ -1443,9 +1445,136 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   window.addEventListener("resize",sizeCanvases);
   window.addEventListener("orientationchange",()=>setTimeout(sizeCanvases,250));
 
+  // ---- 左右それぞれのピンチズーム（動画とその線画レイヤーをCSSで一緒に拡大）----
+  const zoomS={A:{s:1,x:0,y:0},B:{s:1,x:0,y:0}};
+  const cellOf=s=>$(s==="A"?"cmpCellA":"cmpCellB");
+  const ptrs={A:new Map(),B:new Map()};
+  const gest={A:null,B:null};
+  const lastTap={A:0,B:0};
+
+  // 拡大しても画面より小さい軸は必ず中央。上下限が反転しない形にしてある
+  function clampZoom(side){
+    const z=zoomS[side];
+    if(!isFinite(z.s)||isNaN(z.s))z.s=1;
+    z.s=Math.max(1,Math.min(4,z.s));
+    if(!isFinite(z.x))z.x=0;
+    if(!isFinite(z.y))z.y=0;
+    if(z.s<=1.001){z.s=1;z.x=0;z.y=0;return;}
+    const cell=cellOf(side),cw=cell.clientWidth||1,ch=cell.clientHeight||1;
+    const v=sideEl(side),vw=v.videoWidth||0,vh=v.videoHeight||0;
+    if(!(vw>0&&vh>0)){z.x=0;z.y=0;return;}
+    const k=Math.min(cw/vw,ch/vh),w0=vw*k,h0=vh*k;
+    const mx=Math.max(0,(w0*z.s-cw)/2),my=Math.max(0,(h0*z.s-ch)/2);
+    z.x=Math.max(-mx,Math.min(mx,z.x));
+    z.y=Math.max(-my,Math.min(my,z.y));
+  }
+  function applyZoom(side){
+    const z=zoomS[side];
+    const t=z.s<=1.001?"":`translate(${z.x}px,${z.y}px) scale(${z.s})`;
+    sideEl(side).style.transform=t;
+    canOf(side).style.transform=t;
+    const rb=$(side==="A"?"cmpZoomResetA":"cmpZoomResetB");
+    if(rb)rb.style.display=(cmp.view==="split"&&z.s>1.001)?"flex":"none";
+  }
+  function applyAllTransforms(){
+    if(cmp.view==="overlay"){
+      vA.style.transform="";canOf("A").style.transform="";
+      applyOverlayTransform();
+      $("cmpZoomResetA").style.display="none";$("cmpZoomResetB").style.display="none";
+    }else{applyZoom("A");applyZoom("B");}
+  }
+  function resetZoom(side){zoomS[side]={s:1,x:0,y:0};applyZoom(side);}
+  $("cmpZoomResetA").onclick=e=>{e.stopPropagation();resetZoom("A");};
+  $("cmpZoomResetB").onclick=e=>{e.stopPropagation();resetZoom("B");};
+
+  ["A","B"].forEach(side=>{
+    const cell=cellOf(side);
+    const P=ptrs[side];
+    const release=id=>{P.delete(id);if(P.size===0)gest[side]=null;};
+
+    cell.addEventListener("pointerdown",e=>{
+      if(cmp.view!=="split"||!cmp.loaded[side])return;
+      if(e.target.closest(".cell-bar"))return;
+      // 新しい操作の1本目なら前回の指情報を捨てる（残留による暴発を防ぐ）
+      if(e.isPrimary)P.clear();
+      try{cell.setPointerCapture(e.pointerId);}catch(err){}
+      P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+      if(P.size===2){
+        // ピンチ開始：描きかけの線があれば破棄
+        if(drawingSide===side){drawing=null;drawingSide=null;drawSide(side);}
+        const a=[...P.values()];
+        const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+        if(!(d>=20)){gest[side]=null;return;}
+        const r=cell.getBoundingClientRect(),z=zoomS[side];
+        gest[side]={mode:"pinch",d0:d,s0:z.s,x0:z.x,y0:z.y,
+          mx:(a[0].x+a[1].x)/2-r.left-r.width/2,
+          my:(a[0].y+a[1].y)/2-r.top-r.height/2};
+      }else if(P.size===1&&!cmp.drawOn&&zoomS[side].s>1.001){
+        const z=zoomS[side];
+        gest[side]={mode:"pan",sx:e.clientX,sy:e.clientY,x0:z.x,y0:z.y};
+      }
+    });
+
+    cell.addEventListener("pointermove",e=>{
+      if(!P.has(e.pointerId))return;
+      P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      const g=gest[side];if(!g)return;
+      const z=zoomS[side];
+      if(g.mode==="pinch"&&P.size>=2){
+        e.preventDefault();
+        const a=[...P.values()];
+        const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+        if(!(g.d0>=20)||!(d>0))return;
+        const r=cell.getBoundingClientRect();
+        const mx=(a[0].x+a[1].x)/2-r.left-r.width/2;
+        const my=(a[0].y+a[1].y)/2-r.top-r.height/2;
+        // 開始時に中点の下にあった点を、現在の中点に留める
+        const cx=(g.mx-g.x0)/g.s0,cy=(g.my-g.y0)/g.s0;
+        z.s=Math.max(1,Math.min(4,g.s0*(d/g.d0)));
+        z.x=mx-cx*z.s;z.y=my-cy*z.s;
+        clampZoom(side);applyZoom(side);
+      }else if(g.mode==="pan"&&P.size===1){
+        e.preventDefault();
+        z.x=g.x0+(e.clientX-g.sx);z.y=g.y0+(e.clientY-g.sy);
+        clampZoom(side);applyZoom(side);
+      }
+    });
+
+    const up=e=>{
+      if(!P.has(e.pointerId))return;
+      const wasPinch=gest[side]&&gest[side].mode==="pinch";
+      release(e.pointerId);
+      if(P.size===1&&wasPinch){
+        // 1本残ったら基準を取り直す（そのまま続けても飛ばないように）
+        gest[side]=null;
+      }
+      if(P.size===0){
+        clampZoom(side);applyZoom(side);
+        // ダブルタップで等倍に戻す（線画中は描画優先なので無効）
+        if(!cmp.drawOn&&!wasPinch){
+          const now=Date.now();
+          if(now-lastTap[side]<300){resetZoom(side);lastTap[side]=0;}
+          else lastTap[side]=now;
+        }
+      }
+    };
+    cell.addEventListener("pointerup",up);
+    cell.addEventListener("pointercancel",up);
+    // セルの外で指を離した場合の取りこぼしを拾う
+    ["pointerup","pointercancel"].forEach(ev=>window.addEventListener(ev,e=>{
+      if(!P.has(e.pointerId))return;
+      release(e.pointerId);
+      if(P.size===0){clampZoom(side);applyZoom(side);}
+    }));
+  });
+  // Safari自身のページ拡大が割り込むと表示が崩れるので、この領域では止める
+  ["gesturestart","gesturechange","gestureend"].forEach(ev=>$("cmpStage").addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+  window.addEventListener("resize",()=>{clampZoom("A");clampZoom("B");applyAllTransforms();});
+
   // タブ離脱で再生停止
   document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();else tryRestore();}));
-  layoutStage();refreshCells();refreshAll();sizeCanvases();
+  layoutStage();refreshCells();refreshAll();sizeCanvases();applyAllTransforms();
 })();
 
 ["undoBtn","clearAllBtn","selDelBtn","fsUndoBtn","fsClearBtn","fsSelDelBtn"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",anaTouch);});
