@@ -248,6 +248,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-stage.split .cmp-cell.ref{border-left:1px solid var(--line);}
 .cmp-stage.overlay{display:block;}
 .cmp-stage.overlay .cmp-cell{position:absolute;inset:0;}
+.cmp-stage.overlay .cmp-cell.ref{background:transparent;}
+.cmp-stage.overlay .cmp-cell.ref .cell-lbl{left:auto;right:7px;}
 .cmp-stage.overlay .cmp-cell.ref video{opacity:var(--ovl,.5);}
 /* ビューバー */
 .cmp-viewbar{display:flex;align-items:center;gap:6px;padding:8px 11px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;}
@@ -255,7 +257,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .seg button{border:none;border-radius:0;background:transparent;padding:8px 13px;font-size:12px;color:var(--muted);flex:none;font-family:inherit;font-weight:600;}
 .seg button.active{background:rgba(184,255,60,.18);color:var(--impact);}
 .cmp-viewbar .mini{flex:0 0 auto;padding:8px 11px;font-size:12px;border-radius:10px;}
-.cmp-ovl-op{display:flex;align-items:center;gap:6px;flex:1;min-width:150px;}
+.cmp-ovl-op{display:flex;align-items:center;gap:6px;flex:1 0 100%;min-width:0;}
 .cmp-ovl-op label{font-size:11px;color:var(--muted);white-space:nowrap;}
 .cmp-ovl-op input{flex:1;min-width:50px;}
 .cmp-ovl-op .mini{padding:7px 10px;}
@@ -326,7 +328,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.1</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.2</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -440,6 +442,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 <!-- 比較タブ -->
 <div class="pane hidden" id="pane-cmp">
   <div class="cmp-upload" id="cmpUpload">
+    <div class="cmp-hint" id="cmpRestoring" style="display:none">前回の動画とマークを復元中…</div>
     <div class="cmp-hint">自分のスイングとお手本を1本ずつ選んでください。両方そろうと比較を開始します。</div>
     <div class="cmp-slot self" id="cmpSlotA">
       <h3>自分のスイング<span class="tag">A</span></h3>
@@ -865,7 +868,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
   const sideEl=s=>s==="B"?vB:vA;
   const isSync=()=>cmp.target==="sync";
   const curV=()=>cmp.target==="B"?vB:vA;
@@ -888,8 +891,19 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     el.textContent=(side==="A"?"自分":"お手本")+"の動画を読み込めませんでした。別の動画で試すか、iOSは「ファイルを選択」からmp4/movを選んでみてください。";
   }
   function clearLoadError(){const e=$("cmpLoadErr");if(e)e.remove();}
-  function loadSide(side,src){
-    cmp.src[side]=src;
+  // ---- 保存（IndexedDB：動画そのものとマークを端末に残す）----
+  const DBN="swingclipper",ST="cmp";
+  function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DBN,1);}catch(e){return rej(e);}r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+  async function idbSet(k,v){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction(ST,"readwrite");t.objectStore(ST).put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
+  async function idbGet(k){try{const d=await idbOpen();return await new Promise((res,rej)=>{const t=d.transaction(ST,"readonly"),q=t.objectStore(ST).get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}catch(e){return null;}}
+  async function idbDel(k){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction(ST,"readwrite");t.objectStore(ST).delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
+  function saveVid(side){if(cmp.blob[side])idbSet(side==="A"?"vidA":"vidB",cmp.blob[side]);}
+  function saveMeta(){idbSet("meta",{marks:cmp.marks,offset:cmp.offset,view:cmp.view});}
+
+  function loadSide(side,blob,keep){
+    if(cmp.src[side]){try{URL.revokeObjectURL(cmp.src[side]);}catch(e){}}
+    const src=URL.createObjectURL(blob);
+    cmp.blob[side]=blob;cmp.src[side]=src;
     const probe=document.createElement("video");probe.muted=true;probe.playsInline=true;probe.preload="metadata";
     let done=false;
     const ok=()=>{
@@ -897,18 +911,32 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       clearLoadError();
       cmp.dur[side]=probe.duration||0;probe.removeAttribute("src");
       const v=sideEl(side);v.muted=true;v.src=src;v.load();
-      cmp.loaded[side]=true;cmp.marks[side]={};cmp.offset[side]=0;
+      cmp.loaded[side]=true;
+      if(!keep){cmp.marks[side]={};cmp.offset[side]=0;saveVid(side);saveMeta();}
       updateSlot(side);
-      if(cmp.loaded.A&&cmp.loaded.B)enterMain();
+      if(cmp.loaded.A&&cmp.loaded.B&&$("cmpMain").classList.contains("hidden"))enterMain();
     };
-    const bad=()=>{if(done)return;done=true;clearTimeout(to);showLoadError(side);};
+    const bad=()=>{if(done)return;done=true;clearTimeout(to);$("cmpRestoring").style.display="none";showLoadError(side);};
     probe.addEventListener("loadedmetadata",ok);
     probe.addEventListener("loadeddata",ok);
     probe.addEventListener("error",bad);
     probe.src=src;probe.load();
     var to=setTimeout(()=>{(probe.duration>0||probe.videoWidth>0)?ok():bad();},6000);
   }
+  // 比較タブを開いたときに前回の状態を自動復元
+  let restoreTried=false;
+  async function tryRestore(){
+    if(restoreTried||cmp.loaded.A||cmp.loaded.B)return;
+    restoreTried=true;
+    const a=await idbGet("vidA");if(!a)return;
+    const b=await idbGet("vidB");if(!b)return;
+    const meta=await idbGet("meta");
+    if(meta){if(meta.marks)cmp.marks=meta.marks;if(meta.offset)cmp.offset=meta.offset;if(meta.view)cmp.view=meta.view;}
+    $("cmpRestoring").style.display="block";
+    loadSide("A",a,true);loadSide("B",b,true);
+  }
   function enterMain(){
+    $("cmpRestoring").style.display="none";
     $("cmpUpload").classList.add("hidden");
     $("cmpMain").classList.remove("hidden");
     cmp.phase=0;layoutStage();
@@ -920,13 +948,13 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function openPicker(side){
     pickingFor=side;const grid=$("cmpPickerGrid");grid.innerHTML="";
     if(!clipStore.length){grid.innerHTML='<div class="empty-clips">録画タブでスイングを撮ると、ここから選べます。</div>';}
-    else{[...clipStore].reverse().forEach(c=>{const d=document.createElement("div");d.className="cmp-pick-item";d.innerHTML=`<video muted playsinline preload="metadata"></video><span>#${c.seq} · ${c.tl}</span>`;d.querySelector("video").src=c.url;d.onclick=()=>{loadSide(side,URL.createObjectURL(c.blob));closePicker();};grid.appendChild(d);});}
+    else{[...clipStore].reverse().forEach(c=>{const d=document.createElement("div");d.className="cmp-pick-item";d.innerHTML=`<video muted playsinline preload="metadata"></video><span>#${c.seq} · ${c.tl}</span>`;d.querySelector("video").src=c.url;d.onclick=()=>{loadSide(side,c.blob);closePicker();};grid.appendChild(d);});}
     $("cmpPicker").classList.remove("hidden");
   }
   function closePicker(){$("cmpPicker").classList.add("hidden");}
   $("cmpPickerClose").onclick=closePicker;
   document.querySelectorAll("#cmpUpload [data-pick]").forEach(b=>{b.onclick=()=>{const side=b.dataset.pick;if(b.dataset.src==="clip")openPicker(side);else{pickingFor=side;$("cmpFileInput").click();}};});
-  $("cmpFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadSide(pickingFor,URL.createObjectURL(f));e.target.value="";};
+  $("cmpFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadSide(pickingFor,f);e.target.value="";};
 
   // ---- フェーズ→時間マッピング ----
   function activeEvents(){return EVENTS.map(([k])=>k).filter(k=>cmp.marks.A[k]!=null&&cmp.marks.B[k]!=null);}
@@ -1025,10 +1053,10 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     b.onclick=()=>{
       if(fired){fired=false;return;}
       if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.seg=(cmp.seg===k)?null:k;cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();refreshNodes();}
-      else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();}
+      else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();saveMeta();}
     };
   });
-  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshNodes();};
+  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshNodes();saveMeta();};
 
   // ---- 節目ごとの移動/削除 ----
   let menuEv=null;
@@ -1043,7 +1071,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   $("cmpNodeMenu").addEventListener("click",e=>{if(e.target===$("cmpNodeMenu"))closeNodeMenu();});
   $("cmpNodePlay").onclick=()=>{const k=menuEv;closeNodeMenu();if(k!=null)playSideSegment(cmp.target,k);};
   $("cmpNodeGo").onclick=()=>{if(menuEv!=null){const t=cmp.marks[cmp.target][menuEv];if(t!=null){const v=curV();v.pause();setPlayBtn(false);setTime(v,t);updateTransportUI();}}closeNodeMenu();};
-  $("cmpNodeDel").onclick=()=>{if(menuEv!=null){delete cmp.marks[cmp.target][menuEv];refreshNodes();}closeNodeMenu();};
+  $("cmpNodeDel").onclick=()=>{if(menuEv!=null){delete cmp.marks[cmp.target][menuEv];refreshNodes();saveMeta();}closeNodeMenu();};
 
   // ---- 表示ラベル ----
   function phaseLabel(){
@@ -1059,9 +1087,9 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   }
 
   // ---- ズレ微調整 ----
-  document.querySelectorAll("[data-nudge]").forEach(b=>{b.onclick=()=>{const s=b.dataset.nudge;cmp.offset[s]+=parseInt(b.dataset.dir)*cmp.step;applyPhase();updateNudgeUI();};});
-  $("cmpOfsA").onclick=()=>{cmp.offset.A=0;applyPhase();updateNudgeUI();};
-  $("cmpOfsB").onclick=()=>{cmp.offset.B=0;applyPhase();updateNudgeUI();};
+  document.querySelectorAll("[data-nudge]").forEach(b=>{b.onclick=()=>{const s=b.dataset.nudge;cmp.offset[s]+=parseInt(b.dataset.dir)*cmp.step;applyPhase();updateNudgeUI();saveMeta();};});
+  $("cmpOfsA").onclick=()=>{cmp.offset.A=0;applyPhase();updateNudgeUI();saveMeta();};
+  $("cmpOfsB").onclick=()=>{cmp.offset.B=0;applyPhase();updateNudgeUI();saveMeta();};
   function fmtOfs(x){return(x>=0?"+":"")+x.toFixed(2)+"s";}
   function updateNudgeUI(){$("cmpOfsA").textContent=fmtOfs(cmp.offset.A);$("cmpOfsB").textContent=fmtOfs(cmp.offset.B);}
 
@@ -1081,7 +1109,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   // ---- ビュー / 重ね ----
   function applyOverlayTransform(){vB.style.transform=`translate(${cmp.ovl.x}px,${cmp.ovl.y}px) scale(${cmp.ovl.s})`;}
   function layoutStage(){const st=$("cmpStage");const ov=cmp.view==="overlay";st.classList.toggle("overlay",ov);st.classList.toggle("split",!ov);$("cmpOvlOp").style.display=ov?"flex":"none";if(ov)applyOverlayTransform();else vB.style.transform="";document.querySelectorAll("#cmpViewSeg button").forEach(x=>x.classList.toggle("active",x.dataset.view===cmp.view));}
-  document.querySelectorAll("#cmpViewSeg button").forEach(b=>{b.onclick=()=>{cmp.view=b.dataset.view;layoutStage();};});
+  document.querySelectorAll("#cmpViewSeg button").forEach(b=>{b.onclick=()=>{cmp.view=b.dataset.view;layoutStage();saveMeta();};});
   $("cmpStage").style.setProperty("--ovl","0.5");
   $("cmpOpacity").oninput=e=>{$("cmpStage").style.setProperty("--ovl",(parseInt(e.target.value)/100).toString());};
   $("cmpOvlScaleUp").onclick=()=>{cmp.ovl.s=Math.min(3,cmp.ovl.s*1.08);applyOverlayTransform();};
@@ -1096,11 +1124,12 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   $("cmpSwap").onclick=()=>{
     if(!(cmp.loaded.A&&cmp.loaded.B))return;
     [cmp.src.A,cmp.src.B]=[cmp.src.B,cmp.src.A];
+    [cmp.blob.A,cmp.blob.B]=[cmp.blob.B,cmp.blob.A];
     [cmp.dur.A,cmp.dur.B]=[cmp.dur.B,cmp.dur.A];
     [cmp.marks.A,cmp.marks.B]=[cmp.marks.B,cmp.marks.A];
     [cmp.offset.A,cmp.offset.B]=[cmp.offset.B,cmp.offset.A];
     vA.src=cmp.src.A;vB.src=cmp.src.B;vA.load();vB.load();
-    let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();}};
+    let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();saveVid("A");saveVid("B");saveMeta();}};
     vA.onloadedmetadata=on;vB.onloadedmetadata=on;
   };
 
@@ -1130,10 +1159,10 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function refreshAll(){refreshNodes();updateNudgeUI();updateTransportUI();}
 
   // ---- 動画変更 ----
-  $("cmpChange").onclick=()=>{stopAll();cmp.loaded={A:false,B:false};cmp.src={A:null,B:null};cmp.dur={A:0,B:0};cmp.marks={A:{},B:{}};cmp.offset={A:0,B:0};cmp.phase=0;clearLoadError();vA.removeAttribute("src");vB.removeAttribute("src");vA.load();vB.load();$("cmpMain").classList.add("hidden");$("cmpUpload").classList.remove("hidden");updateSlot("A");updateSlot("B");};
+  $("cmpChange").onclick=()=>{stopAll();restoreTried=true;idbDel("vidA");idbDel("vidB");idbDel("meta");["A","B"].forEach(s=>{if(cmp.src[s]){try{URL.revokeObjectURL(cmp.src[s]);}catch(e){}}});cmp.loaded={A:false,B:false};cmp.src={A:null,B:null};cmp.blob={A:null,B:null};cmp.dur={A:0,B:0};cmp.marks={A:{},B:{}};cmp.offset={A:0,B:0};cmp.phase=0;cmp.seg=null;clearLoadError();vA.removeAttribute("src");vB.removeAttribute("src");vA.load();vB.load();$("cmpMain").classList.add("hidden");$("cmpUpload").classList.remove("hidden");updateSlot("A");updateSlot("B");};
 
   // タブ離脱で再生停止
-  document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();}));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();else tryRestore();}));
 })();
 
 // ---- 起動 ----
