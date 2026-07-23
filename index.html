@@ -242,6 +242,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-stage{position:relative;background:#000;overflow:hidden;flex:1;min-height:38vh;display:flex;touch-action:none;}
 .cmp-cell{position:relative;flex:1;min-width:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .cmp-cell video{width:100%;height:100%;object-fit:contain;display:block;}
+.cmp-draw{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;display:block;}
+.cmp-stage.draw .cmp-draw{pointer-events:auto;touch-action:none;}
+.cmp-stage.overlay.draw .cmp-cell.ref .cmp-draw{pointer-events:none;}
+.cmp-draw-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.cmp-draw-row .seg button{padding:6px 11px;font-size:11px;}
+.cmp-draw-row .mini{flex:0 0 auto;padding:6px 11px;font-size:11px;border-radius:8px;}
+.cmp-colors{display:flex;gap:5px;}
+.cmp-colors i{width:21px;height:21px;border-radius:50%;display:block;border:2px solid transparent;cursor:pointer;}
+.cmp-colors i.active{border-color:var(--ink);}
+#cmpDrawToggle.on{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .cell-bar{position:absolute;top:6px;left:6px;right:6px;z-index:4;display:flex;align-items:center;gap:6px;}
 .cmp-cell .cell-lbl{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);pointer-events:none;flex:0 0 auto;}
 .cell-pick{margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(8,12,10,.72);backdrop-filter:blur(6px);border:1px solid var(--line);color:var(--ink);}
@@ -335,7 +345,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.7</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.8</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -466,11 +476,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="cmp-stage split" id="cmpStage">
       <div class="cmp-cell self" id="cmpCellA">
         <video id="cmpVidA" playsinline muted preload="auto"></video>
+        <canvas class="cmp-draw" id="cmpCanA"></canvas>
         <div class="cell-empty" id="cmpEmptyA">右上の「選択」から<br>自分のスイングを選ぶ</div>
         <div class="cell-bar"><span class="cell-lbl">自分</span><button class="cell-pick" data-pick="A">選択</button></div>
       </div>
       <div class="cmp-cell ref" id="cmpCellB">
         <video id="cmpVidB" playsinline muted preload="auto"></video>
+        <canvas class="cmp-draw" id="cmpCanB"></canvas>
         <div class="cell-empty" id="cmpEmptyB">右上の「選択」から<br>お手本を選ぶ</div>
         <div class="cell-bar"><span class="cell-lbl">お手本</span><button class="cell-pick" data-pick="B">選択</button></div>
       </div>
@@ -478,6 +490,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="cmp-viewbar">
       <div class="seg" id="cmpViewSeg"><button data-view="split" class="active">左右</button><button data-view="overlay">重ね</button></div>
       <button class="mini" id="cmpSwap">⇄ 入替</button>
+      <button class="mini" id="cmpDrawToggle">✏︎ 線画</button>
       <div class="cmp-ovl-op" id="cmpOvlOp" style="display:none">
         <label>透明度</label><input type="range" id="cmpOpacity" min="15" max="85" value="50">
         <button class="mini" id="cmpOvlScaleDown">－</button><button class="mini" id="cmpOvlScaleUp">＋</button><button class="mini" id="cmpOvlReset">位置↺</button>
@@ -485,6 +498,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="cmp-spacer"></div>
     </div>
     <div class="cmp-ctrl" id="cmpCtrl">
+      <div class="cmp-draw-row" id="cmpDrawRow" style="display:none">
+        <div class="seg" id="cmpToolSeg"><button data-ctool="line" class="active">╱ 線</button><button data-ctool="circle">○ 円</button></div>
+        <div class="cmp-colors" id="cmpColors"><i data-c="#ef4444" class="active" style="background:#ef4444"></i><i data-c="#3b82f6" style="background:#3b82f6"></i><i data-c="#22c55e" style="background:#22c55e"></i><i data-c="#eab308" style="background:#eab308"></i></div>
+        <div class="cmp-spacer"></div>
+        <button class="mini" id="cmpDrawUndo">↩ 取消</button>
+        <button class="mini" id="cmpDrawClear">消去</button>
+      </div>
       <div class="cmp-target" id="cmpTarget">
         <button data-tgt="A" class="self active">自分</button>
         <button data-tgt="B" class="ref">お手本</button>
@@ -964,7 +984,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},ann:{A:[],B:[]},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,drawOn:false,tool:"line",color:"#ef4444",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
   vA.loop=true;vB.loop=true;
   const sideEl=s=>s==="B"?vB:vA;
   const isSync=()=>cmp.target==="sync";
@@ -1001,7 +1021,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     el.innerHTML=side==="A"?"右上の「選択」から<br>自分のスイングを選ぶ":"右上の「選択」から<br>お手本を選ぶ";
   }
   function saveVid(side){if(cmp.blob[side])idbSet(side==="A"?"vidA":"vidB",cmp.blob[side]);}
-  function saveMeta(){idbSet("meta",{marks:cmp.marks,offset:cmp.offset,view:cmp.view});}
+  function saveMeta(){idbSet("meta",{marks:cmp.marks,ann:cmp.ann,offset:cmp.offset,view:cmp.view});}
 
   function loadSide(side,blob,keep){
     if(cmp.src[side]){try{URL.revokeObjectURL(cmp.src[side]);}catch(e){}}
@@ -1015,7 +1035,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       cmp.dur[side]=probe.duration||0;probe.removeAttribute("src");
       const v=sideEl(side);v.muted=true;v.src=src;v.load();
       cmp.loaded[side]=true;
-      if(!keep){cmp.marks[side]={};cmp.offset[side]=0;saveVid(side);saveMeta();}
+      if(!keep){cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;saveVid(side);saveMeta();}
       primeVideo(v);refreshCells();
       if(!keep)setTarget(side);else{layoutStage();refreshAll();}
     };
@@ -1032,7 +1052,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     if(restoreTried||cmp.loaded.A||cmp.loaded.B)return;
     restoreTried=true;
     const a=await idbGet("vidA"),b=await idbGet("vidB"),meta=await idbGet("meta");
-    if(meta){if(meta.marks)cmp.marks=meta.marks;if(meta.offset)cmp.offset=meta.offset;if(meta.view)cmp.view=meta.view;}
+    if(meta){if(meta.marks)cmp.marks=meta.marks;if(meta.ann)cmp.ann=meta.ann;if(meta.offset)cmp.offset=meta.offset;if(meta.view)cmp.view=meta.view;}
     if(a)loadSide("A",a,true);
     if(b)loadSide("B",b,true);
   }
@@ -1059,7 +1079,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function removeSide(side){
     stopAll();
     if(cmp.src[side]){try{URL.revokeObjectURL(cmp.src[side]);}catch(e){}}
-    cmp.loaded[side]=false;cmp.src[side]=null;cmp.blob[side]=null;cmp.dur[side]=0;cmp.marks[side]={};cmp.offset[side]=0;cmp.seg=null;
+    cmp.loaded[side]=false;cmp.src[side]=null;cmp.blob[side]=null;cmp.dur[side]=0;cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;cmp.seg=null;
     const v=sideEl(side);v.removeAttribute("src");v.load();
     idbDel(side==="A"?"vidA":"vidB");saveMeta();
     clearLoadError(side);refreshCells();refreshAll();
@@ -1220,8 +1240,8 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   document.querySelectorAll("#cmpTarget button").forEach(b=>{b.onclick=()=>setTarget(b.dataset.tgt);});
 
   // ---- ビュー / 重ね ----
-  function applyOverlayTransform(){vB.style.transform=`translate(${cmp.ovl.x}px,${cmp.ovl.y}px) scale(${cmp.ovl.s})`;}
-  function layoutStage(){const st=$("cmpStage");const ov=cmp.view==="overlay";st.classList.toggle("overlay",ov);st.classList.toggle("split",!ov);$("cmpOvlOp").style.display=ov?"flex":"none";if(ov)applyOverlayTransform();else vB.style.transform="";document.querySelectorAll("#cmpViewSeg button").forEach(x=>x.classList.toggle("active",x.dataset.view===cmp.view));}
+  function applyOverlayTransform(){const t=`translate(${cmp.ovl.x}px,${cmp.ovl.y}px) scale(${cmp.ovl.s})`;vB.style.transform=t;$("cmpCanB").style.transform=t;}
+  function layoutStage(){const st=$("cmpStage");const ov=cmp.view==="overlay";st.classList.toggle("overlay",ov);st.classList.toggle("split",!ov);$("cmpOvlOp").style.display=ov?"flex":"none";if(ov)applyOverlayTransform();else{vB.style.transform="";$("cmpCanB").style.transform="";}sizeCanvases();document.querySelectorAll("#cmpViewSeg button").forEach(x=>x.classList.toggle("active",x.dataset.view===cmp.view));}
   document.querySelectorAll("#cmpViewSeg button").forEach(b=>{b.onclick=()=>{cmp.view=b.dataset.view;layoutStage();saveMeta();};});
   $("cmpStage").style.setProperty("--ovl","0.5");
   $("cmpOpacity").oninput=e=>{$("cmpStage").style.setProperty("--ovl",(parseInt(e.target.value)/100).toString());};
@@ -1240,6 +1260,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     [cmp.blob.A,cmp.blob.B]=[cmp.blob.B,cmp.blob.A];
     [cmp.dur.A,cmp.dur.B]=[cmp.dur.B,cmp.dur.A];
     [cmp.marks.A,cmp.marks.B]=[cmp.marks.B,cmp.marks.A];
+    [cmp.ann.A,cmp.ann.B]=[cmp.ann.B,cmp.ann.A];
     [cmp.offset.A,cmp.offset.B]=[cmp.offset.B,cmp.offset.A];
     vA.src=cmp.src.A;vB.src=cmp.src.B;vA.load();vB.load();
     let n=0;const on=()=>{if(++n>=2){primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();saveVid("A");saveVid("B");saveMeta();}};
@@ -1273,9 +1294,97 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- 動画変更 ----
 
+  // ---- 線画（各動画の上に透明レイヤーを重ねる）----
+  const canOf=s=>$(s==="A"?"cmpCanA":"cmpCanB");
+  const drawHist=[];
+  let drawing=null,drawingSide=null;
+  function sizeCanvases(){
+    ["A","B"].forEach(side=>{
+      const cell=$(side==="A"?"cmpCellA":"cmpCellB"),c=canOf(side);
+      const w=cell.clientWidth||1,h=cell.clientHeight||1;
+      if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+    });
+    drawAll();
+  }
+  function vidRect(side){
+    const v=sideEl(side),c=canOf(side);
+    const cw=c.width,ch=c.height,vw=v.videoWidth||1,vh=v.videoHeight||1;
+    const sc=Math.min(cw/vw,ch/vh),w=vw*sc,h=vh*sc;
+    return{left:(cw-w)/2,top:(ch-h)/2,width:w||1,height:h||1};
+  }
+  function drawSide(side){
+    const c=canOf(side),ctx=c.getContext("2d");
+    ctx.clearRect(0,0,c.width,c.height);
+    if(!cmp.loaded[side])return;
+    const b=vidRect(side);
+    const list=cmp.ann[side].concat(drawing&&drawingSide===side?[drawing]:[]);
+    ctx.lineCap="round";
+    for(const a of list){
+      ctx.strokeStyle=a.color;ctx.lineWidth=1.1;
+      ctx.beginPath();
+      if(a.type==="line"){ctx.moveTo(b.left+a.nx1*b.width,b.top+a.ny1*b.height);ctx.lineTo(b.left+a.nx2*b.width,b.top+a.ny2*b.height);}
+      else ctx.arc(b.left+a.ncx*b.width,b.top+a.ncy*b.height,Math.max(1,a.nr*b.width),0,Math.PI*2);
+      ctx.stroke();
+    }
+  }
+  function drawAll(){drawSide("A");drawSide("B");}
+  function toNorm(side,cx,cy){
+    const c=canOf(side),r=c.getBoundingClientRect();
+    const sx=c.width/(r.width||1),sy=c.height/(r.height||1);
+    const px=(cx-r.left)*sx,py=(cy-r.top)*sy,b=vidRect(side);
+    return{nx:Math.max(0,Math.min(1,(px-b.left)/b.width)),ny:Math.max(0,Math.min(1,(py-b.top)/b.height))};
+  }
+  ["A","B"].forEach(side=>{
+    const c=canOf(side);
+    const finish=()=>{
+      if(!drawing||drawingSide!==side)return;
+      const b=vidRect(side);let ok=false;
+      if(drawing.type==="line"){const dx=(drawing.nx2-drawing.nx1)*b.width,dy=(drawing.ny2-drawing.ny1)*b.height;ok=Math.hypot(dx,dy)>6;}
+      else ok=drawing.nr*b.width>5;
+      if(ok){cmp.ann[side].push(drawing);drawHist.push(side);saveMeta();}
+      drawing=null;drawingSide=null;drawSide(side);
+    };
+    c.addEventListener("pointerdown",e=>{
+      if(!cmp.drawOn||!cmp.loaded[side])return;
+      e.preventDefault();
+      try{c.setPointerCapture(e.pointerId);}catch(err){}
+      const{nx,ny}=toNorm(side,e.clientX,e.clientY);
+      drawingSide=side;
+      drawing=cmp.tool==="line"?{type:"line",nx1:nx,ny1:ny,nx2:nx,ny2:ny,color:cmp.color}:{type:"circle",ncx:nx,ncy:ny,nr:0,color:cmp.color};
+      drawSide(side);
+    });
+    c.addEventListener("pointermove",e=>{
+      if(!drawing||drawingSide!==side)return;
+      e.preventDefault();
+      const{nx,ny}=toNorm(side,e.clientX,e.clientY),b=vidRect(side);
+      if(drawing.type==="line"){drawing.nx2=nx;drawing.ny2=ny;}
+      else{const dx=(nx-drawing.ncx)*b.width,dy=(ny-drawing.ncy)*b.height;drawing.nr=Math.hypot(dx,dy)/b.width;}
+      drawSide(side);
+    });
+    c.addEventListener("pointerup",finish);
+    c.addEventListener("pointercancel",finish);
+    window.addEventListener("pointerup",finish);
+  });
+  $("cmpDrawToggle").onclick=()=>{
+    cmp.drawOn=!cmp.drawOn;
+    $("cmpStage").classList.toggle("draw",cmp.drawOn);
+    $("cmpDrawToggle").classList.toggle("on",cmp.drawOn);
+    $("cmpDrawRow").style.display=cmp.drawOn?"flex":"none";
+    setTimeout(sizeCanvases,60);
+  };
+  document.querySelectorAll("#cmpToolSeg button").forEach(b=>{b.onclick=()=>{cmp.tool=b.dataset.ctool;document.querySelectorAll("#cmpToolSeg button").forEach(x=>x.classList.toggle("active",x===b));};});
+  document.querySelectorAll("#cmpColors i").forEach(el=>{el.onclick=()=>{cmp.color=el.dataset.c;document.querySelectorAll("#cmpColors i").forEach(x=>x.classList.toggle("active",x===el));};});
+  $("cmpDrawUndo").onclick=()=>{const side=drawHist.pop();if(!side)return;cmp.ann[side].pop();drawSide(side);saveMeta();};
+  $("cmpDrawClear").onclick=()=>{cmp.ann.A=[];cmp.ann.B=[];drawHist.length=0;drawAll();saveMeta();};
+  vA.addEventListener("loadedmetadata",sizeCanvases);
+  vB.addEventListener("loadedmetadata",sizeCanvases);
+  if(window.ResizeObserver){try{new ResizeObserver(()=>sizeCanvases()).observe($("cmpStage"));}catch(e){}}
+  window.addEventListener("resize",sizeCanvases);
+  window.addEventListener("orientationchange",()=>setTimeout(sizeCanvases,250));
+
   // タブ離脱で再生停止
   document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();else tryRestore();}));
-  layoutStage();refreshCells();refreshAll();
+  layoutStage();refreshCells();refreshAll();sizeCanvases();
 })();
 
 ["undoBtn","clearAllBtn","selDelBtn","fsUndoBtn","fsClearBtn","fsSelDelBtn"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",anaTouch);});
