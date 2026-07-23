@@ -328,7 +328,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.2</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.3</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -838,8 +838,20 @@ $("anaPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pa
 $("anaSeek").oninput=()=>{if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("anaSeek").value)/1000)*anaVideo.duration;};
 document.querySelectorAll(".speed-btn").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.rate);document.querySelectorAll(".speed-btn").forEach(x=>x.classList.toggle("active",x===b));};});
 document.querySelectorAll("[data-step]").forEach(b=>{b.onclick=()=>{stepSize=parseFloat(b.dataset.step);document.querySelectorAll("[data-step]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".fs-step").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.fsStep)===stepSize));};});
-$("prevFrameBtn").onclick=()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);};
-$("nextFrameBtn").onclick=()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;};
+// 長押ししている間コマ送りを連続実行（押した瞬間に1回→少し待って加速リピート）
+function holdRepeat(el,fn){
+  if(!el)return;
+  let timer=null,cnt=0;
+  const stop=()=>{if(timer){clearTimeout(timer);timer=null;}};
+  const tick=()=>{if(el.disabled){stop();return;}fn();cnt++;timer=setTimeout(tick,cnt<8?95:55);};
+  el.addEventListener("pointerdown",()=>{if(el.disabled)return;stop();cnt=0;fn();timer=setTimeout(tick,330);});
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>el.addEventListener(ev,stop));
+  window.addEventListener("pointerup",stop);
+  window.addEventListener("pointercancel",stop);
+  window.addEventListener("blur",stop);
+}
+holdRepeat($("prevFrameBtn"),()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);});
+holdRepeat($("nextFrameBtn"),()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;});
 
 
 
@@ -854,8 +866,8 @@ $("nextFrameBtn").onclick=()=>{anaVideo.pause();const n=anaVideo.currentTime+ste
 
 
 // ---- 全画面コマ送り ----
-$("fsPrevBtn").onclick=()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);};
-$("fsNextBtn").onclick=()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;};
+holdRepeat($("fsPrevBtn"),()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);});
+holdRepeat($("fsNextBtn"),()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;});
 document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseFloat(b.dataset.fsStep);
   // 通常/全画面の両ボタン群を同期
   document.querySelectorAll(".fs-step").forEach(x=>x.classList.toggle("active",x===b));
@@ -1025,8 +1037,8 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     if(isSync()){stopSync();cmp.phase=Math.max(0,Math.min(1,cmp.phase+dir*0.005));applyPhase();}
     else{const v=curV();v.pause();setTime(v,Math.max(0,Math.min(v.duration||0,v.currentTime+dir*cmp.step)));updateTransportUI();}
   }
-  $("cmpStepBack").onclick=()=>step(-1);
-  $("cmpStepFwd").onclick=()=>step(1);
+  holdRepeat($("cmpStepBack"),()=>step(-1));
+  holdRepeat($("cmpStepFwd"),()=>step(1));
   document.querySelectorAll(".cmp-rate").forEach(b=>{b.onclick=()=>{cmp.rate=parseFloat(b.dataset.rate);document.querySelectorAll(".cmp-rate").forEach(x=>x.classList.toggle("active",x===b));if(!isSync()&&!curV().paused)curV().playbackRate=Math.max(0.25,cmp.rate);};});
   document.querySelectorAll(".cmp-mstep").forEach(b=>{b.onclick=()=>{cmp.step=parseFloat(b.dataset.mstep);document.querySelectorAll(".cmp-mstep").forEach(x=>x.classList.toggle("active",x===b));};});
   [vA,vB].forEach(v=>{
