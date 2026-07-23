@@ -77,7 +77,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:max
 @keyframes fls{0%{opacity:.32}100%{opacity:0}}
 .controls{display:flex;flex-direction:column;gap:12px;padding:14px 16px;background:var(--panel);border-top:1px solid var(--line);}
 .row{display:flex;gap:10px;}
-button{font-family:inherit;font-weight:600;border-radius:var(--radius);color:var(--ink);background:var(--panel-2);border:1px solid var(--line);padding:13px 14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;flex:1;transition:transform .08s,background .15s;}
+button{font-family:inherit;font-weight:600;border-radius:var(--radius);color:var(--ink);background:var(--panel-2);border:1px solid var(--line);padding:13px 14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;flex:1;transition:transform .08s,background .15s;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;}
 button:active{transform:scale(.97);}
 button:disabled{opacity:.4;pointer-events:none;}
 .btn-primary{background:var(--impact);color:#0c1407;border-color:var(--impact);font-weight:700;flex:2;}
@@ -261,7 +261,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-ovl-op .mini{padding:7px 10px;}
 .cmp-spacer{flex:1;}
 /* ===== 統合コントロール（コンパクト）===== */
-.cmp-ctrl{display:flex;flex-direction:column;gap:6px;padding:7px 11px 9px;background:var(--panel);border-top:1px solid var(--line);}
+.cmp-ctrl{display:flex;flex-direction:column;gap:6px;padding:7px 11px 9px;background:var(--panel);border-top:1px solid var(--line);touch-action:manipulation;}
 .cmp-target{display:flex;gap:4px;}
 .cmp-target button{flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-family:inherit;}
 .cmp-target button.self.active{background:rgba(184,255,60,.18);color:var(--impact);border-color:rgba(184,255,60,.4);}
@@ -281,6 +281,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-node .dots i.a.on{background:var(--impact);}
 .cmp-node .dots i.b.on{background:var(--armed);}
 .cmp-node.marked{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-node .mt{display:none;font-family:"JetBrains Mono",monospace;font-size:9px;opacity:.9;line-height:1;}
+.cmp-node.showtime .dots{display:none;}
+.cmp-node.showtime .mt{display:block;}
+.cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
+.cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
+#cmpNodeDel{color:var(--danger);border-color:rgba(255,107,94,.35);}
 .cmp-ctrl.tgt-ref .cmp-node.marked{background:rgba(245,166,35,.16);color:var(--armed);border-color:rgba(245,166,35,.4);}
 .cmp-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .cmp-sub-hint{font-size:11px;color:var(--muted);}
@@ -478,7 +484,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       </div>
       <div class="cmp-node-row" id="cmpNodeRow"></div>
       <div class="cmp-sub" id="cmpMarkSub">
-        <span class="cmp-sub-hint">節目ボタン=いまの位置にマーク</span>
+        <span class="cmp-sub-hint">節目ボタン=いまの位置にマーク／長押しで移動・削除</span>
         <div class="cmp-step-mini">
           <button class="step-btn cmp-mstep active" data-mstep="0.05">1/20s</button>
           <button class="step-btn cmp-mstep" data-mstep="0.02">1/50s</button>
@@ -490,6 +496,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <span class="cmp-sub-hint">ズレ微調整:</span>
         <div class="cmp-nudge self"><b>自分</b><button data-nudge="A" data-dir="-1">◀</button><span class="ofs" id="cmpOfsA">+0.00s</span><button data-nudge="A" data-dir="1">▶</button></div>
         <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp-picker hidden" id="cmpNodeMenu">
+    <div class="cmp-picker-panel">
+      <div class="cmp-picker-head"><h3 id="cmpNodeMenuTitle">節目</h3><button id="cmpNodeMenuClose">✕</button></div>
+      <div class="cmp-nodemenu-acts">
+        <button id="cmpNodeGo">この位置へ移動</button>
+        <button id="cmpNodeDel">このマークを削除</button>
       </div>
     </div>
   </div>
@@ -849,7 +865,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const curV=()=>cmp.target==="B"?vB:vA;
 
   // 節目ボタン生成
-  $("cmpNodeRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-node" data-ev="${k}"><span>${n}</span><span class="dots"><i class="a"></i><i class="b"></i></span></button>`).join("");
+  $("cmpNodeRow").innerHTML=EVENTS.map(([k,n])=>`<button class="cmp-node" data-ev="${k}"><span>${n}</span><span class="dots"><i class="a"></i><i class="b"></i></span><span class="mt"></span></button>`).join("");
 
   // ---- 動画ロード ----
   function primeVideo(v){v.muted=true;const p=v.play();if(p&&p.then)p.then(()=>v.pause()).catch(()=>{});else{try{v.pause();}catch(e){}}}
@@ -954,11 +970,40 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   });
 
   // ---- 節目ボタン（自分/お手本＝マーク、同期＝ジャンプ）----
-  $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{b.onclick=()=>{const k=b.dataset.ev;
-    if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();}
-    else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();}
-  };});
+  $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
+    const k=b.dataset.ev;
+    let hold=null,fired=false,sx=0,sy=0;
+    const cancelHold=()=>{if(hold){clearTimeout(hold);hold=null;}};
+    b.addEventListener("pointerdown",e=>{
+      fired=false;cancelHold();
+      if(isSync()||cmp.marks[cmp.target][k]==null)return;
+      sx=e.clientX;sy=e.clientY;
+      hold=setTimeout(()=>{hold=null;fired=true;openNodeMenu(k);},450);
+    });
+    b.addEventListener("pointermove",e=>{if(hold&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10))cancelHold();});
+    b.addEventListener("pointerup",cancelHold);
+    b.addEventListener("pointerleave",cancelHold);
+    b.addEventListener("pointercancel",()=>{cancelHold();fired=false;});
+    b.onclick=()=>{
+      if(fired){fired=false;return;}
+      if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();}
+      else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();}
+    };
+  });
   $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshNodes();};
+
+  // ---- 節目ごとの移動/削除 ----
+  let menuEv=null;
+  function openNodeMenu(k){
+    menuEv=k;
+    $("cmpNodeMenuTitle").textContent=(cmp.target==="A"?"自分":"お手本")+"・"+JP[k]+"  "+fmtTime(cmp.marks[cmp.target][k]);
+    $("cmpNodeMenu").classList.remove("hidden");
+  }
+  function closeNodeMenu(){$("cmpNodeMenu").classList.add("hidden");menuEv=null;}
+  $("cmpNodeMenuClose").onclick=closeNodeMenu;
+  $("cmpNodeMenu").addEventListener("click",e=>{if(e.target===$("cmpNodeMenu"))closeNodeMenu();});
+  $("cmpNodeGo").onclick=()=>{if(menuEv!=null){const t=cmp.marks[cmp.target][menuEv];if(t!=null){const v=curV();v.pause();setPlayBtn(false);setTime(v,t);updateTransportUI();}}closeNodeMenu();};
+  $("cmpNodeDel").onclick=()=>{if(menuEv!=null){delete cmp.marks[cmp.target][menuEv];refreshNodes();}closeNodeMenu();};
 
   // ---- 表示ラベル ----
   function phaseLabel(){
@@ -1026,7 +1071,10 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       const k=b.dataset.ev,am=cmp.marks.A[k]!=null,bm=cmp.marks.B[k]!=null;
       b.querySelector(".a").classList.toggle("on",am);
       b.querySelector(".b").classList.toggle("on",bm);
-      b.classList.toggle("marked",!sync&&(cmp.target==="A"?am:bm));
+      const mine=!sync&&(cmp.target==="A"?am:bm);
+      b.classList.toggle("marked",mine);
+      b.classList.toggle("showtime",mine);
+      if(mine)b.querySelector(".mt").textContent=fmtTime(cmp.marks[cmp.target][k]);
       b.disabled=sync&&!(am&&bm);
     });
   }
