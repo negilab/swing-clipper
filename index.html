@@ -345,7 +345,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.8</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.9</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -499,9 +499,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
     <div class="cmp-ctrl" id="cmpCtrl">
       <div class="cmp-draw-row" id="cmpDrawRow" style="display:none">
-        <div class="seg" id="cmpToolSeg"><button data-ctool="line" class="active">╱ 線</button><button data-ctool="circle">○ 円</button></div>
+        <div class="seg" id="cmpToolSeg"><button data-ctool="cursor">↖</button><button data-ctool="line" class="active">╱ 線</button><button data-ctool="circle">○ 円</button></div>
         <div class="cmp-colors" id="cmpColors"><i data-c="#ef4444" class="active" style="background:#ef4444"></i><i data-c="#3b82f6" style="background:#3b82f6"></i><i data-c="#22c55e" style="background:#22c55e"></i><i data-c="#eab308" style="background:#eab308"></i></div>
         <div class="cmp-spacer"></div>
+        <button class="mini" id="cmpSelDel" style="display:none;color:var(--danger);border-color:rgba(255,107,94,.35)">✕ 削除</button>
         <button class="mini" id="cmpDrawUndo">↩ 取消</button>
         <button class="mini" id="cmpDrawClear">消去</button>
       </div>
@@ -984,7 +985,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},ann:{A:[],B:[]},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,drawOn:false,tool:"line",color:"#ef4444",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},ann:{A:[],B:[]},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,drawOn:false,tool:"line",color:"#ef4444",sel:{side:null,idx:-1},dragHandle:null,lastN:{nx:0,ny:0},phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
   vA.loop=true;vB.loop=true;
   const sideEl=s=>s==="B"?vB:vA;
   const isSync=()=>cmp.target==="sync";
@@ -1326,8 +1327,47 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       else ctx.arc(b.left+a.ncx*b.width,b.top+a.ncy*b.height,Math.max(1,a.nr*b.width),0,Math.PI*2);
       ctx.stroke();
     }
+    // 選択中の図形に破線とハンドルを出す
+    if(cmp.sel.side===side&&cmp.sel.idx>=0&&cmp.ann[side][cmp.sel.idx]){
+      const a=cmp.ann[side][cmp.sel.idx];
+      ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=0.8;ctx.beginPath();
+      if(a.type==="line"){ctx.moveTo(b.left+a.nx1*b.width,b.top+a.ny1*b.height);ctx.lineTo(b.left+a.nx2*b.width,b.top+a.ny2*b.height);}
+      else ctx.arc(b.left+a.ncx*b.width,b.top+a.ncy*b.height,Math.max(1,a.nr*b.width),0,Math.PI*2);
+      ctx.stroke();ctx.setLineDash([]);
+      const hs=a.type==="line"?[[a.nx1,a.ny1],[a.nx2,a.ny2]]:[[a.ncx,a.ncy],[a.ncx+a.nr,a.ncy]];
+      for(const[hx,hy]of hs){
+        ctx.beginPath();ctx.arc(b.left+hx*b.width,b.top+hy*b.height,7,0,Math.PI*2);
+        ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.stroke();
+      }
+    }
   }
   function drawAll(){drawSide("A");drawSide("B");}
+  function segDistPx(nx,ny,a,b){
+    const px=nx*b.width,py=ny*b.height,x1=a.nx1*b.width,y1=a.ny1*b.height,x2=a.nx2*b.width,y2=a.ny2*b.height;
+    const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy;
+    if(l2===0)return Math.hypot(px-x1,py-y1);
+    const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));
+    return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+  }
+  function hitAnn(side,nx,ny){
+    const b=vidRect(side),THR=14,list=cmp.ann[side];
+    for(let i=list.length-1;i>=0;i--){
+      const a=list[i];
+      if(a.type==="line"){if(segDistPx(nx,ny,a,b)<THR)return i;}
+      else{const d=Math.hypot((nx-a.ncx)*b.width,(ny-a.ncy)*b.height),r=a.nr*b.width;if(d<THR||Math.abs(d-r)<THR)return i;}
+    }
+    return -1;
+  }
+  function hitHandle(side,nx,ny){
+    if(cmp.sel.side!==side||cmp.sel.idx<0)return null;
+    const a=cmp.ann[side][cmp.sel.idx];if(!a)return null;
+    const b=vidRect(side),T=16,h=(hx,hy)=>Math.hypot((nx-hx)*b.width,(ny-hy)*b.height);
+    if(a.type==="line"){if(h(a.nx1,a.ny1)<T)return"p1";if(h(a.nx2,a.ny2)<T)return"p2";}
+    else{if(h(a.ncx,a.ncy)<T)return"center";if(h(a.ncx+a.nr,a.ncy)<T)return"rim";}
+    return null;
+  }
+  function clearSel(){cmp.sel={side:null,idx:-1};cmp.dragHandle=null;updateSelDel();}
+  function updateSelDel(){$("cmpSelDel").style.display=cmp.sel.idx>=0?"flex":"none";}
   function toNorm(side,cx,cy){
     const c=canOf(side),r=c.getBoundingClientRect();
     const sx=c.width/(r.width||1),sy=c.height/(r.height||1);
@@ -1337,6 +1377,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   ["A","B"].forEach(side=>{
     const c=canOf(side);
     const finish=()=>{
+      if(cmp.dragHandle){cmp.dragHandle=null;saveMeta();return;}
       if(!drawing||drawingSide!==side)return;
       const b=vidRect(side);let ok=false;
       if(drawing.type==="line"){const dx=(drawing.nx2-drawing.nx1)*b.width,dy=(drawing.ny2-drawing.ny1)*b.height;ok=Math.hypot(dx,dy)>6;}
@@ -1349,11 +1390,29 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       e.preventDefault();
       try{c.setPointerCapture(e.pointerId);}catch(err){}
       const{nx,ny}=toNorm(side,e.clientX,e.clientY);
+      cmp.lastN={nx,ny};
+      if(cmp.tool==="cursor"){
+        const hh=hitHandle(side,nx,ny);
+        if(hh){cmp.dragHandle=hh;return;}
+        const idx=hitAnn(side,nx,ny);
+        cmp.sel=idx>=0?{side,idx}:{side:null,idx:-1};
+        cmp.dragHandle=null;updateSelDel();drawAll();return;
+      }
       drawingSide=side;
       drawing=cmp.tool==="line"?{type:"line",nx1:nx,ny1:ny,nx2:nx,ny2:ny,color:cmp.color}:{type:"circle",ncx:nx,ncy:ny,nr:0,color:cmp.color};
       drawSide(side);
     });
     c.addEventListener("pointermove",e=>{
+      // ハンドルを掴んで編集中
+      if(cmp.tool==="cursor"&&cmp.dragHandle&&cmp.sel.side===side&&cmp.sel.idx>=0){
+        e.preventDefault();
+        const{nx,ny}=toNorm(side,e.clientX,e.clientY),b=vidRect(side),a=cmp.ann[side][cmp.sel.idx];
+        const dnx=nx-cmp.lastN.nx,dny=ny-cmp.lastN.ny;
+        if(a.type==="line"){if(cmp.dragHandle==="p1"){a.nx1+=dnx;a.ny1+=dny;}else{a.nx2+=dnx;a.ny2+=dny;}}
+        else if(cmp.dragHandle==="center"){a.ncx+=dnx;a.ncy+=dny;}
+        else a.nr=Math.hypot((nx-a.ncx)*b.width,(ny-a.ncy)*b.height)/b.width;
+        cmp.lastN={nx,ny};drawSide(side);return;
+      }
       if(!drawing||drawingSide!==side)return;
       e.preventDefault();
       const{nx,ny}=toNorm(side,e.clientX,e.clientY),b=vidRect(side);
@@ -1370,12 +1429,14 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     $("cmpStage").classList.toggle("draw",cmp.drawOn);
     $("cmpDrawToggle").classList.toggle("on",cmp.drawOn);
     $("cmpDrawRow").style.display=cmp.drawOn?"flex":"none";
-    setTimeout(sizeCanvases,60);
+    if(!cmp.drawOn)clearSel();
+    setTimeout(()=>{sizeCanvases();drawAll();},60);
   };
-  document.querySelectorAll("#cmpToolSeg button").forEach(b=>{b.onclick=()=>{cmp.tool=b.dataset.ctool;document.querySelectorAll("#cmpToolSeg button").forEach(x=>x.classList.toggle("active",x===b));};});
+  document.querySelectorAll("#cmpToolSeg button").forEach(b=>{b.onclick=()=>{cmp.tool=b.dataset.ctool;if(cmp.tool!=="cursor")clearSel();document.querySelectorAll("#cmpToolSeg button").forEach(x=>x.classList.toggle("active",x===b));drawAll();};});
   document.querySelectorAll("#cmpColors i").forEach(el=>{el.onclick=()=>{cmp.color=el.dataset.c;document.querySelectorAll("#cmpColors i").forEach(x=>x.classList.toggle("active",x===el));};});
-  $("cmpDrawUndo").onclick=()=>{const side=drawHist.pop();if(!side)return;cmp.ann[side].pop();drawSide(side);saveMeta();};
-  $("cmpDrawClear").onclick=()=>{cmp.ann.A=[];cmp.ann.B=[];drawHist.length=0;drawAll();saveMeta();};
+  $("cmpSelDel").onclick=()=>{if(cmp.sel.idx<0)return;const{side,idx}=cmp.sel;cmp.ann[side].splice(idx,1);const hi=drawHist.lastIndexOf(side);if(hi>=0)drawHist.splice(hi,1);clearSel();drawAll();saveMeta();};
+  $("cmpDrawUndo").onclick=()=>{const side=drawHist.pop();if(!side)return;cmp.ann[side].pop();clearSel();drawSide(side);saveMeta();};
+  $("cmpDrawClear").onclick=()=>{cmp.ann.A=[];cmp.ann.B=[];drawHist.length=0;clearSel();drawAll();saveMeta();};
   vA.addEventListener("loadedmetadata",sizeCanvases);
   vB.addEventListener("loadedmetadata",sizeCanvases);
   if(window.ResizeObserver){try{new ResizeObserver(()=>sizeCanvases()).observe($("cmpStage"));}catch(e){}}
