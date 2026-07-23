@@ -242,14 +242,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-stage{position:relative;background:#000;overflow:hidden;flex:1;min-height:38vh;display:flex;touch-action:none;}
 .cmp-cell{position:relative;flex:1;min-width:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .cmp-cell video{width:100%;height:100%;object-fit:contain;display:block;}
-.cmp-cell .cell-lbl{position:absolute;top:7px;left:7px;z-index:3;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);pointer-events:none;}
+.cell-bar{position:absolute;top:6px;left:6px;right:6px;z-index:4;display:flex;align-items:center;gap:6px;}
+.cmp-cell .cell-lbl{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(8,12,10,.7);backdrop-filter:blur(6px);border:1px solid var(--line);pointer-events:none;flex:0 0 auto;}
+.cell-pick{margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(8,12,10,.72);backdrop-filter:blur(6px);border:1px solid var(--line);color:var(--ink);}
+.cell-empty{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;font-size:12px;line-height:1.6;color:var(--muted);}
+.cmp-cell.filled .cell-empty{display:none;}
+.cell-empty.err{color:#ffd7d2;}
 .cmp-cell.self .cell-lbl{color:var(--impact);border-color:rgba(184,255,60,.4);}
 .cmp-cell.ref .cell-lbl{color:var(--armed);border-color:rgba(245,166,35,.4);}
 .cmp-stage.split .cmp-cell.ref{border-left:1px solid var(--line);}
 .cmp-stage.overlay{display:block;}
 .cmp-stage.overlay .cmp-cell{position:absolute;inset:0;}
 .cmp-stage.overlay .cmp-cell.ref{background:transparent;}
-.cmp-stage.overlay .cmp-cell.ref .cell-lbl{left:auto;right:7px;}
+.cmp-stage.overlay .cmp-cell.ref{pointer-events:none;}
+.cmp-stage.overlay .cmp-cell.ref .cell-bar{top:auto;bottom:6px;pointer-events:auto;}
 .cmp-stage.overlay .cmp-cell.ref video{opacity:var(--ovl,.5);}
 /* ビューバー */
 .cmp-viewbar{display:flex;align-items:center;gap:6px;padding:8px 11px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap;}
@@ -293,7 +299,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .ana-nodes{display:flex;flex-direction:column;gap:5px;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
-#cmpNodeDel,#anaNodeDelBtn{color:var(--danger);border-color:rgba(255,107,94,.35);}
+#cmpNodeDel,#anaNodeDelBtn,#cmpSrcRemove{color:var(--danger);border-color:rgba(255,107,94,.35);}
 .cmp-ctrl.tgt-ref .cmp-node.marked{background:rgba(245,166,35,.16);color:var(--armed);border-color:rgba(245,166,35,.4);}
 .cmp-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .cmp-sub-hint{font-size:11px;color:var(--muted);}
@@ -329,7 +335,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.6</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.7</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -454,26 +460,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 <!-- 比較タブ -->
 <div class="pane hidden" id="pane-cmp">
-  <div class="cmp-upload" id="cmpUpload">
-    <div class="cmp-hint" id="cmpRestoring" style="display:none">前回の動画とマークを復元中…</div>
-    <div class="cmp-hint">自分のスイングとお手本を1本ずつ選んでください。両方そろうと比較を開始します。</div>
-    <div class="cmp-slot self" id="cmpSlotA">
-      <h3>自分のスイング<span class="tag">A</span></h3>
-      <div class="cmp-slot-thumb" id="cmpThumbA"><video muted playsinline></video><span class="cmp-slot-done">✓ 読込済み</span></div>
-      <div class="cmp-slot-row"><button data-pick="A" data-src="clip">録画クリップ</button><button data-pick="A" data-src="file">ファイルから</button></div>
-    </div>
-    <div class="cmp-slot" id="cmpSlotB">
-      <h3>お手本<span class="tag">B</span></h3>
-      <div class="cmp-slot-thumb" id="cmpThumbB"><video muted playsinline></video><span class="cmp-slot-done">✓ 読込済み</span></div>
-      <div class="cmp-slot-row"><button data-pick="B" data-src="clip">録画クリップ</button><button data-pick="B" data-src="file">ファイルから</button></div>
-    </div>
-  </div>
   <input type="file" id="cmpFileInput" accept="video/*" hidden>
 
-  <div class="cmp-main hidden" id="cmpMain">
+  <div class="cmp-main" id="cmpMain">
     <div class="cmp-stage split" id="cmpStage">
-      <div class="cmp-cell self" id="cmpCellA"><span class="cell-lbl">自分</span><video id="cmpVidA" playsinline muted preload="auto"></video></div>
-      <div class="cmp-cell ref" id="cmpCellB"><span class="cell-lbl">お手本</span><video id="cmpVidB" playsinline muted preload="auto"></video></div>
+      <div class="cmp-cell self" id="cmpCellA">
+        <video id="cmpVidA" playsinline muted preload="auto"></video>
+        <div class="cell-empty" id="cmpEmptyA">右上の「選択」から<br>自分のスイングを選ぶ</div>
+        <div class="cell-bar"><span class="cell-lbl">自分</span><button class="cell-pick" data-pick="A">選択</button></div>
+      </div>
+      <div class="cmp-cell ref" id="cmpCellB">
+        <video id="cmpVidB" playsinline muted preload="auto"></video>
+        <div class="cell-empty" id="cmpEmptyB">右上の「選択」から<br>お手本を選ぶ</div>
+        <div class="cell-bar"><span class="cell-lbl">お手本</span><button class="cell-pick" data-pick="B">選択</button></div>
+      </div>
     </div>
     <div class="cmp-viewbar">
       <div class="seg" id="cmpViewSeg"><button data-view="split" class="active">左右</button><button data-view="overlay">重ね</button></div>
@@ -483,7 +483,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <button class="mini" id="cmpOvlScaleDown">－</button><button class="mini" id="cmpOvlScaleUp">＋</button><button class="mini" id="cmpOvlReset">位置↺</button>
       </div>
       <div class="cmp-spacer"></div>
-      <button class="mini" id="cmpChange" style="color:var(--muted)">動画変更</button>
     </div>
     <div class="cmp-ctrl" id="cmpCtrl">
       <div class="cmp-target" id="cmpTarget">
@@ -517,6 +516,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <span class="cmp-sub-hint">ズレ微調整:</span>
         <div class="cmp-nudge self"><b>自分</b><button data-nudge="A" data-dir="-1">◀</button><span class="ofs" id="cmpOfsA">+0.00s</span><button data-nudge="A" data-dir="1">▶</button></div>
         <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp-picker hidden" id="cmpSrcMenu">
+    <div class="cmp-picker-panel">
+      <div class="cmp-picker-head"><h3 id="cmpSrcTitle">動画を選ぶ</h3><button id="cmpSrcClose">✕</button></div>
+      <div class="cmp-nodemenu-acts">
+        <button id="cmpSrcClip">録画クリップから選ぶ</button>
+        <button id="cmpSrcFile">ファイルから選ぶ</button>
+        <button id="cmpSrcRemove">この動画を外す</button>
       </div>
     </div>
   </div>
@@ -965,19 +975,31 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- 動画ロード ----
   function primeVideo(v){v.muted=true;const p=v.play();if(p&&p.then)p.then(()=>v.pause()).catch(()=>{});else{try{v.pause();}catch(e){}}}
-  function updateSlot(side){
-    const filled=cmp.loaded[side];
-    const slot=$(side==="A"?"cmpSlotA":"cmpSlotB");
-    slot.classList.toggle("filled",filled);
-    if(filled){const th=$(side==="A"?"cmpThumbA":"cmpThumbB").querySelector("video");th.src=cmp.src[side];th.load();}
-    slot.querySelectorAll(".cmp-slot-row button").forEach(b=>b.textContent=b.dataset.src==="clip"?(filled?"別のクリップ":"録画クリップ"):(filled?"別のファイル":"ファイルから"));
+  function refreshCells(){
+    ["A","B"].forEach(side=>{
+      const cell=$(side==="A"?"cmpCellA":"cmpCellB");
+      cell.classList.toggle("filled",cmp.loaded[side]);
+      cell.querySelector(".cell-pick").textContent=cmp.loaded[side]?"変更":"選択";
+      const tb=document.querySelector('#cmpTarget button[data-tgt="'+side+'"]');
+      if(tb)tb.disabled=!cmp.loaded[side];
+    });
+    const both=cmp.loaded.A&&cmp.loaded.B;
+    const sb=document.querySelector('#cmpTarget button[data-tgt="sync"]');
+    if(sb)sb.disabled=!both;
+    $("cmpSwap").disabled=!both;
+    if(isSync()&&!both)setTarget(cmp.loaded.A?"A":"B");
+    else if(!isSync()&&!cmp.loaded[cmp.target]){if(cmp.loaded.A)setTarget("A");else if(cmp.loaded.B)setTarget("B");}
   }
   function showLoadError(side){
-    let el=$("cmpLoadErr");
-    if(!el){el=document.createElement("div");el.id="cmpLoadErr";el.style.cssText="font-size:12px;line-height:1.5;color:#ffd7d2;background:rgba(255,107,94,.1);border:1px solid rgba(255,107,94,.4);border-radius:12px;padding:10px 13px;max-width:420px;width:100%;text-align:left;";$("cmpUpload").insertBefore(el,$("cmpSlotA"));}
-    el.textContent=(side==="A"?"自分":"お手本")+"の動画を読み込めませんでした。別の動画で試すか、iOSは「ファイルを選択」からmp4/movを選んでみてください。";
+    const el=$(side==="A"?"cmpEmptyA":"cmpEmptyB");
+    el.classList.add("err");
+    el.innerHTML="この動画は読み込めませんでした。<br>別の動画か、mp4/movで試してください。";
   }
-  function clearLoadError(){const e=$("cmpLoadErr");if(e)e.remove();}
+  function clearLoadError(side){
+    const el=$(side==="A"?"cmpEmptyA":"cmpEmptyB");
+    el.classList.remove("err");
+    el.innerHTML=side==="A"?"右上の「選択」から<br>自分のスイングを選ぶ":"右上の「選択」から<br>お手本を選ぶ";
+  }
   function saveVid(side){if(cmp.blob[side])idbSet(side==="A"?"vidA":"vidB",cmp.blob[side]);}
   function saveMeta(){idbSet("meta",{marks:cmp.marks,offset:cmp.offset,view:cmp.view});}
 
@@ -989,15 +1011,15 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     let done=false;
     const ok=()=>{
       if(done)return;if(!(probe.duration>0||probe.videoWidth>0))return;done=true;clearTimeout(to);
-      clearLoadError();
+      clearLoadError(side);
       cmp.dur[side]=probe.duration||0;probe.removeAttribute("src");
       const v=sideEl(side);v.muted=true;v.src=src;v.load();
       cmp.loaded[side]=true;
       if(!keep){cmp.marks[side]={};cmp.offset[side]=0;saveVid(side);saveMeta();}
-      updateSlot(side);
-      if(cmp.loaded.A&&cmp.loaded.B&&$("cmpMain").classList.contains("hidden"))enterMain();
+      primeVideo(v);refreshCells();
+      if(!keep)setTarget(side);else{layoutStage();refreshAll();}
     };
-    const bad=()=>{if(done)return;done=true;clearTimeout(to);$("cmpRestoring").style.display="none";showLoadError(side);};
+    const bad=()=>{if(done)return;done=true;clearTimeout(to);showLoadError(side);};
     probe.addEventListener("loadedmetadata",ok);
     probe.addEventListener("loadeddata",ok);
     probe.addEventListener("error",bad);
@@ -1009,19 +1031,10 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   async function tryRestore(){
     if(restoreTried||cmp.loaded.A||cmp.loaded.B)return;
     restoreTried=true;
-    const a=await idbGet("vidA");if(!a)return;
-    const b=await idbGet("vidB");if(!b)return;
-    const meta=await idbGet("meta");
+    const a=await idbGet("vidA"),b=await idbGet("vidB"),meta=await idbGet("meta");
     if(meta){if(meta.marks)cmp.marks=meta.marks;if(meta.offset)cmp.offset=meta.offset;if(meta.view)cmp.view=meta.view;}
-    $("cmpRestoring").style.display="block";
-    loadSide("A",a,true);loadSide("B",b,true);
-  }
-  function enterMain(){
-    $("cmpRestoring").style.display="none";
-    $("cmpUpload").classList.add("hidden");
-    $("cmpMain").classList.remove("hidden");
-    cmp.phase=0;layoutStage();
-    setTimeout(()=>{primeVideo(vA);primeVideo(vB);setTarget(cmp.target);refreshAll();},80);
+    if(a)loadSide("A",a,true);
+    if(b)loadSide("B",b,true);
   }
 
   // ---- クリップピッカー ----
@@ -1034,7 +1047,23 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   }
   function closePicker(){$("cmpPicker").classList.add("hidden");}
   $("cmpPickerClose").onclick=closePicker;
-  document.querySelectorAll("#cmpUpload [data-pick]").forEach(b=>{b.onclick=()=>{const side=b.dataset.pick;if(b.dataset.src==="clip")openPicker(side);else{pickingFor=side;$("cmpFileInput").click();}};});
+  let srcSide="A";
+  function openSrcMenu(side){srcSide=side;$("cmpSrcTitle").textContent=(side==="A"?"自分":"お手本")+"の動画";$("cmpSrcRemove").style.display=cmp.loaded[side]?"flex":"none";$("cmpSrcMenu").classList.remove("hidden");}
+  function closeSrcMenu(){$("cmpSrcMenu").classList.add("hidden");}
+  document.querySelectorAll("[data-pick]").forEach(b=>{b.onclick=()=>openSrcMenu(b.dataset.pick);});
+  $("cmpSrcClose").onclick=closeSrcMenu;
+  $("cmpSrcMenu").addEventListener("click",e=>{if(e.target===$("cmpSrcMenu"))closeSrcMenu();});
+  $("cmpSrcClip").onclick=()=>{closeSrcMenu();openPicker(srcSide);};
+  $("cmpSrcFile").onclick=()=>{closeSrcMenu();pickingFor=srcSide;$("cmpFileInput").click();};
+  $("cmpSrcRemove").onclick=()=>{closeSrcMenu();removeSide(srcSide);};
+  function removeSide(side){
+    stopAll();
+    if(cmp.src[side]){try{URL.revokeObjectURL(cmp.src[side]);}catch(e){}}
+    cmp.loaded[side]=false;cmp.src[side]=null;cmp.blob[side]=null;cmp.dur[side]=0;cmp.marks[side]={};cmp.offset[side]=0;cmp.seg=null;
+    const v=sideEl(side);v.removeAttribute("src");v.load();
+    idbDel(side==="A"?"vidA":"vidB");saveMeta();
+    clearLoadError(side);refreshCells();refreshAll();
+  }
   $("cmpFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadSide(pickingFor,f);e.target.value="";};
 
   // ---- フェーズ→時間マッピング ----
@@ -1094,15 +1123,18 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- 再生/スクラブ/コマ送り（対象＝自分/お手本/同期で切替）----
   function togglePlay(){
+    if(!isSync()&&!cmp.loaded[cmp.target])return;
+    if(isSync()&&!(cmp.loaded.A&&cmp.loaded.B))return;
     if(isSync()){cmp.playing?stopSync():startSync();}
     else{const v=curV();if(v.paused){v.playbackRate=Math.max(0.25,cmp.rate);const p=v.play();if(p&&p.catch)p.catch(()=>{});setPlayBtn(true);}else{v.pause();setPlayBtn(false);}}
   }
   $("cmpPlay").onclick=togglePlay;
-  $("cmpSeek").oninput=e=>{const val=parseInt(e.target.value)/1000;
+  $("cmpSeek").oninput=e=>{if(!isSync()&&!cmp.loaded[cmp.target])return;const val=parseInt(e.target.value)/1000;
     if(isSync()){stopSync();cmp.phase=val;applyPhase();}
     else{const v=curV();if(!isNaN(v.duration)){v.pause();setTime(v,val*v.duration);}updateTransportUI();}
   };
   function step(dir){
+    if(!isSync()&&!cmp.loaded[cmp.target])return;
     if(isSync()){stopSync();cmp.phase=Math.max(0,Math.min(1,cmp.phase+dir*0.005));applyPhase();}
     else{const v=curV();v.pause();setTime(v,Math.max(0,Math.min(v.duration||0,v.currentTime+dir*cmp.step)));updateTransportUI();}
   }
@@ -1240,10 +1272,10 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function refreshAll(){refreshNodes();updateNudgeUI();updateTransportUI();}
 
   // ---- 動画変更 ----
-  $("cmpChange").onclick=()=>{stopAll();restoreTried=true;idbDel("vidA");idbDel("vidB");idbDel("meta");["A","B"].forEach(s=>{if(cmp.src[s]){try{URL.revokeObjectURL(cmp.src[s]);}catch(e){}}});cmp.loaded={A:false,B:false};cmp.src={A:null,B:null};cmp.blob={A:null,B:null};cmp.dur={A:0,B:0};cmp.marks={A:{},B:{}};cmp.offset={A:0,B:0};cmp.phase=0;cmp.seg=null;clearLoadError();vA.removeAttribute("src");vB.removeAttribute("src");vA.load();vB.load();$("cmpMain").classList.add("hidden");$("cmpUpload").classList.remove("hidden");updateSlot("A");updateSlot("B");};
 
   // タブ離脱で再生停止
   document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();else tryRestore();}));
+  layoutStage();refreshCells();refreshAll();
 })();
 
 ["undoBtn","clearAllBtn","selDelBtn","fsUndoBtn","fsClearBtn","fsSelDelBtn"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",anaTouch);});
