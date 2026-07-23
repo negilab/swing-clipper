@@ -290,9 +290,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-segchip{flex:none;padding:6px 11px;font-size:11px;border-radius:8px;color:var(--muted);}
 .cmp-segchip.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .cmp-segchip:disabled{opacity:.75;}
+.ana-nodes{display:flex;flex-direction:column;gap:5px;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
-#cmpNodeDel{color:var(--danger);border-color:rgba(255,107,94,.35);}
+#cmpNodeDel,#anaNodeDelBtn{color:var(--danger);border-color:rgba(255,107,94,.35);}
 .cmp-ctrl.tgt-ref .cmp-node.marked{background:rgba(245,166,35,.16);color:var(--armed);border-color:rgba(245,166,35,.4);}
 .cmp-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .cmp-sub-hint{font-size:11px;color:var(--muted);}
@@ -328,7 +329,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.3</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.4</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -429,6 +430,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="seek-row"><input type="range" id="anaSeek" min="0" max="1000" value="0" step="1"><span class="ana-time" id="anaTime">0:00.0</span></div>
     <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
     <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.05">1/20s</button><button class="step-btn" data-step="0.02">1/50s</button><button class="step-btn" data-step="0.01">1/100s</button><button class="step-btn" data-step="0.005">1/200s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
+    <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><span class="cmp-sub-hint">節目ボタン=いまの位置にマーク／長押しで移動・区間再生・削除</span></div>
     <div class="ios-note hidden" id="iosNote">⚠ iOSは再生速度1/5以下が下限になる場合あり。1/50s・1/100s送りはスロー撮影動画(120/240fps)で有効です</div>
   </div>
   <div class="ana-tools hidden" id="anaTools">
@@ -436,6 +438,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="color-group"><div class="color-dot active" data-color="#ef4444" style="background:#ef4444"></div><div class="color-dot" data-color="#3b82f6" style="background:#3b82f6"></div><div class="color-dot" data-color="#22c55e" style="background:#22c55e"></div><div class="color-dot" data-color="#eab308" style="background:#eab308"></div></div>
     <div class="ana-spacer"></div>
     <div class="act-group"><button class="act-btn sel-del danger" id="selDelBtn">✕ 削除</button><button class="act-btn" id="undoBtn">↩</button><button class="act-btn danger" id="clearAllBtn">全消去</button><button class="act-btn" id="changeVideoBtn" style="color:var(--muted)">動画変更</button></div>
+  </div>
+
+  <div class="cmp-picker hidden" id="anaNodeMenu">
+    <div class="cmp-picker-panel">
+      <div class="cmp-picker-head"><h3 id="anaNodeMenuTitle">節目</h3><button id="anaNodeMenuClose">✕</button></div>
+      <div class="cmp-nodemenu-acts">
+        <button id="anaNodeSegBtn">この区間を再生（前後の節目まで）</button>
+        <button id="anaNodeGoBtn">この位置へ移動</button>
+        <button id="anaNodeDelBtn">このマークを削除</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -591,6 +604,17 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
 const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
+const SWING_EVENTS=[["address","アドレス"],["top","トップ"],["impact","インパクト"],["follow","フォロー"],["finish","フィニッシュ"]];
+function fmtSec(t){if(isNaN(t)||t==null)t=0;const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,"0");return m+":"+s;}
+// 長押し判定。fnがfalseを返したら「長押し扱いにしない」＝通常タップとして処理させる
+function longPress(el,fn){
+  let t=null,fired=false,sx=0,sy=0;
+  const cancel=()=>{if(t){clearTimeout(t);t=null;}};
+  el.addEventListener("pointerdown",e=>{fired=false;cancel();sx=e.clientX;sy=e.clientY;t=setTimeout(()=>{t=null;fired=(fn()!==false);},450);});
+  el.addEventListener("pointermove",e=>{if(t&&(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10))cancel();});
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>el.addEventListener(ev,cancel));
+  return ()=>{const f=fired;fired=false;return f;};
+}
 let stepSize=0.05;
 let isFs=false;
 let fsControlsTimer=null;
@@ -662,11 +686,11 @@ function updateAnaTime(){
 
 // ---- 動画ロード ----
 function loadAnaBlob(blob){loadAnaSource(URL.createObjectURL(blob));}
-function loadAnaSource(src){anaVideo.src=src;anaVideo.load();anaVideo.onloadedmetadata=()=>{$("anaUpload").classList.add("hidden");["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.remove("hidden"));ana.trackPoints=[];ana.annotations=[];ana.drawing=null;ana.selectedIdx=-1;zoom.scale=1;zoom.tx=0;zoom.ty=0;startAnaRaf();updateAnaTime();if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");};}
+function loadAnaSource(src){anaVideo.src=src;anaVideo.load();anaVideo.onloadedmetadata=()=>{$("anaUpload").classList.add("hidden");["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.remove("hidden"));anaVideo.loop=true;anaStopSeg();anaClearMarks();ana.trackPoints=[];ana.annotations=[];ana.drawing=null;ana.selectedIdx=-1;zoom.scale=1;zoom.tx=0;zoom.ty=0;startAnaRaf();updateAnaTime();if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");};}
 $("pickVideoBtn").onclick=()=>$("videoFileInput").click();
 $("dropZone").onclick=e=>{if(e.target===$("pickVideoBtn"))return;$("videoFileInput").click();};
 $("videoFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadAnaSource(URL.createObjectURL(f));};
-$("changeVideoBtn").onclick=()=>{if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}if(isFs)exitFs();anaVideo.pause();anaVideo.src="";["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.add("hidden"));$("anaUpload").classList.remove("hidden");$("videoFileInput").value="";$("iosNote").classList.add("hidden");};
+$("changeVideoBtn").onclick=()=>{anaStopSeg();anaClearMarks();if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}if(isFs)exitFs();anaVideo.pause();anaVideo.src="";["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.add("hidden"));$("anaUpload").classList.remove("hidden");$("videoFileInput").value="";$("iosNote").classList.add("hidden");};
 
 // ---- 全画面（v2.2: 自動非表示なし・ドロワー式）----
 function enterFs(){isFs=true;$("anaStage").classList.add("fs");$("fsFab").style.display="none";$("fsSide").style.display="flex";$("fsDrawer").classList.remove("hidden-drawer");$("fsPanelToggle").classList.add("on");setTimeout(syncCanvas,60);}
@@ -835,7 +859,7 @@ $("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をす�
 
 // ---- 再生 ----
 $("anaPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pause();};
-$("anaSeek").oninput=()=>{if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("anaSeek").value)/1000)*anaVideo.duration;};
+$("anaSeek").oninput=()=>{anaStopSeg();if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("anaSeek").value)/1000)*anaVideo.duration;};
 document.querySelectorAll(".speed-btn").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.rate);document.querySelectorAll(".speed-btn").forEach(x=>x.classList.toggle("active",x===b));};});
 document.querySelectorAll("[data-step]").forEach(b=>{b.onclick=()=>{stepSize=parseFloat(b.dataset.step);document.querySelectorAll("[data-step]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".fs-step").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.fsStep)===stepSize));};});
 // 長押ししている間コマ送りを連続実行（押した瞬間に1回→少し待って加速リピート）
@@ -850,6 +874,37 @@ function holdRepeat(el,fn){
   window.addEventListener("pointercancel",stop);
   window.addEventListener("blur",stop);
 }
+// ---- 分析タブ 節目マーク ----
+const anaMarks={},ANA_JP=Object.fromEntries(SWING_EVENTS);
+$("anaNodeRow").innerHTML=SWING_EVENTS.map(([k,n])=>`<button class="cmp-node" data-ev="${k}"><span>${n}</span><span class="mt"></span></button>`).join("");
+function anaNodeList(){return SWING_EVENTS.map(([k])=>k).filter(k=>anaMarks[k]!=null);}
+function anaRefreshNodes(){$("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{const k=b.dataset.ev,on=anaMarks[k]!=null;b.classList.toggle("marked",on);b.classList.toggle("showtime",on);if(on)b.querySelector(".mt").textContent=fmtSec(anaMarks[k]);});}
+function anaClearMarks(){Object.keys(anaMarks).forEach(k=>delete anaMarks[k]);anaRefreshNodes();}
+let anaSegLoop=null;
+function anaStopSeg(){if(anaSegLoop){clearInterval(anaSegLoop);anaSegLoop=null;}}
+function anaPlaySeg(k){
+  const list=anaNodeList(),i=list.indexOf(k);
+  if(i<0||list.length<2)return;
+  const t0=anaMarks[list[Math.max(0,i-1)]],t1=anaMarks[list[Math.min(list.length-1,i+1)]];
+  if(!(t1>t0))return;
+  anaStopSeg();
+  try{anaVideo.currentTime=t0;}catch(e){}
+  const pr=anaVideo.play();if(pr&&pr.catch)pr.catch(()=>{});
+  anaSegLoop=setInterval(()=>{if(anaVideo.paused){anaStopSeg();return;}if(anaVideo.currentTime>=t1-0.005){try{anaVideo.currentTime=t0;}catch(e){}}},40);
+}
+let anaMenuEv=null;
+function anaOpenMenu(k){anaMenuEv=k;$("anaNodeMenuTitle").textContent=ANA_JP[k]+"  "+fmtSec(anaMarks[k]);$("anaNodeSegBtn").disabled=anaNodeList().length<2;$("anaNodeMenu").classList.remove("hidden");}
+function anaCloseMenu(){$("anaNodeMenu").classList.add("hidden");anaMenuEv=null;}
+$("anaNodeMenuClose").onclick=anaCloseMenu;
+$("anaNodeMenu").addEventListener("click",e=>{if(e.target===$("anaNodeMenu"))anaCloseMenu();});
+$("anaNodeSegBtn").onclick=()=>{const k=anaMenuEv;anaCloseMenu();if(k!=null)anaPlaySeg(k);};
+$("anaNodeGoBtn").onclick=()=>{if(anaMenuEv!=null){anaStopSeg();anaVideo.pause();try{anaVideo.currentTime=anaMarks[anaMenuEv];}catch(e){}}anaCloseMenu();};
+$("anaNodeDelBtn").onclick=()=>{if(anaMenuEv!=null){delete anaMarks[anaMenuEv];anaRefreshNodes();}anaCloseMenu();};
+$("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
+  const k=b.dataset.ev;
+  const wasLong=longPress(b,()=>{if(anaMarks[k]==null)return false;anaOpenMenu(k);});
+  b.onclick=()=>{if(wasLong())return;anaMarks[k]=anaVideo.currentTime;anaRefreshNodes();};
+});
 holdRepeat($("prevFrameBtn"),()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);});
 holdRepeat($("nextFrameBtn"),()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;});
 
@@ -876,11 +931,12 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
 // ===== 比較タブ v3.0 =====
 (function(){
-  const EVENTS=[["address","アドレス"],["top","トップ"],["impact","インパクト"],["follow","フォロー"],["finish","フィニッシュ"]];
+  const EVENTS=SWING_EVENTS;
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
   const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  vA.loop=true;vB.loop=true;
   const sideEl=s=>s==="B"?vB:vA;
   const isSync=()=>cmp.target==="sync";
   const curV=()=>cmp.target==="B"?vB:vA;
@@ -1000,7 +1056,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     const n=act.length-1;
     return JP[act[Math.max(0,i-1)]]+"→"+JP[act[Math.min(n,i+1)]];
   }
-  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);const r=segRange();if(r){if(cmp.phase>=r[1])cmp.phase=r[0];applyPhase();return;}if(cmp.phase>=1){cmp.phase=1;applyPhase();stopSync();return;}applyPhase();}
+  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);const r=segRange();if(r){if(cmp.phase>=r[1])cmp.phase=r[0];applyPhase();return;}if(cmp.phase>=1)cmp.phase=0;applyPhase();}
   function startSync(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;const r=segRange();if(r)cmp.phase=r[0];else if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
   function stopSync(){cmp.playing=false;if(cmp.raf)cancelAnimationFrame(cmp.raf);cmp.raf=null;setPlayBtn(false);}
   // 片側だけの区間ループ再生（自分/お手本モード用・そのサイドのマークを使用）
