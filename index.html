@@ -329,7 +329,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.4</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.5</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -571,8 +571,10 @@ $("playerClose").onclick=()=>{$("playerModal").classList.add("hidden");$("player
 function openPlayer(url){$("playerVideo").src=url;$("playerModal").classList.remove("hidden");$("playerVideo").play().catch(()=>{});}
 
 let clipSeq=0;const clipStore=[];
-function addClip(blob,type){clipSeq++;const url=URL.createObjectURL(blob);const ext=type.includes("mp4")?"mp4":"webm";const now=new Date();const pad=x=>String(x).padStart(2,"0");const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;const fname=`swing_${stamp}.${ext}`;const tl=`${pad(now.getHours())}:${pad(now.getMinutes())}`;const sk=Math.round(blob.size/1024);
-  clipStore.push({seq:clipSeq,url,blob,type,tl});
+function saveClips(){idbSet("clips",clipStore.map(c=>({seq:c.seq,type:c.type,tl:c.tl,fname:c.fname,blob:c.blob})));}
+async function restoreClips(){const saved=await idbGet("clips");if(!saved||!saved.length)return;saved.forEach(o=>{const c={seq:o.seq,url:URL.createObjectURL(o.blob),blob:o.blob,type:o.type,tl:o.tl,fname:o.fname};clipStore.push(c);mountClip(c);if(o.seq>clipSeq)clipSeq=o.seq;});}
+function addClip(blob,type){clipSeq++;const now=new Date();const pad=x=>String(x).padStart(2,"0");const ext=type&&type.includes("mp4")?"mp4":"webm";const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;const c={seq:clipSeq,url:URL.createObjectURL(blob),blob,type,tl:`${pad(now.getHours())}:${pad(now.getMinutes())}`,fname:`swing_${stamp}.${ext}`};clipStore.push(c);mountClip(c);saveClips();}
+function mountClip(c){const{url,blob,type,fname,tl}=c;const sk=Math.round(blob.size/1024);const clipSeq=c.seq;
   const card=document.createElement("div");card.className="clip";
   // サムネイル用の静止画をcanvasで取得
   const thumbC=document.createElement("canvas");thumbC.style.cssText="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;";
@@ -587,7 +589,7 @@ function addClip(blob,type){clipSeq++;const url=URL.createObjectURL(blob);const 
   thumb.onclick=()=>openPlayer(url);
   card.querySelector(".save").onclick=e=>{e.stopPropagation();saveClip(blob,fname,type);};
   card.querySelector(".analyze").onclick=e=>{e.stopPropagation();loadAnaBlob(blob);document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab==="ana"));$("pane-rec").classList.add("hidden");$("pane-ana").classList.remove("hidden");};
-  card.querySelector(".del").onclick=e=>{e.stopPropagation();URL.revokeObjectURL(url);card.remove();const si=clipStore.findIndex(c=>c.url===url);if(si>=0)clipStore.splice(si,1);refreshClipUI();};
+  card.querySelector(".del").onclick=e=>{e.stopPropagation();URL.revokeObjectURL(url);card.remove();const si=clipStore.findIndex(x=>x.url===url);if(si>=0)clipStore.splice(si,1);refreshClipUI();saveClips();};
   els.grid.prepend(card);while(els.grid.children.length>MAX_CLIPS)els.grid.lastElementChild.remove();while(clipStore.length>MAX_CLIPS)clipStore.shift();refreshClipUI();}
 function refreshClipUI(){const n=els.grid.children.length;els.clipCount.textContent=n;els.grid.classList.toggle("hidden",n===0);els.emptyClips.classList.toggle("hidden",n!==0);}
 async function saveClip(blob,fname,type){const file=new File([blob],fname,{type});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname});return;}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
@@ -604,6 +606,12 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
 const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
+// ---- 端末内保存（IndexedDB）----
+const DBN="swingclipper",ST="cmp";
+function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DBN,1);}catch(e){return rej(e);}r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbSet(k,v){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction(ST,"readwrite");t.objectStore(ST).put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
+async function idbGet(k){try{const d=await idbOpen();return await new Promise((res,rej)=>{const t=d.transaction(ST,"readonly"),q=t.objectStore(ST).get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}catch(e){return null;}}
+async function idbDel(k){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction(ST,"readwrite");t.objectStore(ST).delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
 const SWING_EVENTS=[["address","アドレス"],["top","トップ"],["impact","インパクト"],["follow","フォロー"],["finish","フィニッシュ"]];
 function fmtSec(t){if(isNaN(t)||t==null)t=0;const m=Math.floor(t/60),s=(t%60).toFixed(1).padStart(4,"0");return m+":"+s;}
 // 長押し判定。fnがfalseを返したら「長押し扱いにしない」＝通常タップとして処理させる
@@ -634,6 +642,7 @@ function clampZoom(){
   if(!isFinite(zoom.tx))zoom.tx=0;
   if(!isFinite(zoom.ty))zoom.ty=0;
   if(zoom.scale<=1.001){zoom.scale=1;zoom.tx=0;zoom.ty=0;return;}
+  if(!(anaVideo.videoWidth>0&&anaVideo.videoHeight>0))return;
   const b=getVideoBaseRect(),s=zoom.scale;
   const cw=anaCanvas.width,ch=anaCanvas.height;
   // 画面上での動画矩形の左上・サイズ
@@ -641,13 +650,11 @@ function clampZoom(){
   const baseLeft=s*b.left, baseTop=s*b.top; // translate前のscale適用済みオフセット
   // 動画左端(=tx+baseLeft)は0以下、右端(=tx+baseLeft+contentW)はcw以上でなければならない
   // → tx <= -baseLeft  かつ  tx >= cw - baseLeft - contentW
-  const txMax=-baseLeft;
-  const txMin=cw-baseLeft-contentW;
-  const tyMax=-baseTop;
-  const tyMin=ch-baseTop-contentH;
-  // min<=maxのはず（scale>1なので）。念のためクランプ
-  zoom.tx=Math.min(txMax,Math.max(txMin,zoom.tx));
-  zoom.ty=Math.min(tyMax,Math.max(tyMin,zoom.ty));
+  // 拡大しても動画が画面より小さい軸は、端に寄せず中央に置く
+  if(contentW<=cw)zoom.tx=(cw-contentW)/2-baseLeft;
+  else zoom.tx=Math.min(-baseLeft,Math.max(cw-baseLeft-contentW,zoom.tx));
+  if(contentH<=ch)zoom.ty=(ch-contentH)/2-baseTop;
+  else zoom.ty=Math.min(-baseTop,Math.max(ch-baseTop-contentH,zoom.ty));
 }
 
 // ---- ヒット判定 ----
@@ -656,7 +663,7 @@ function hitTestAnnotations(nx,ny){const b=getVideoBaseRect(),THR=14;for(let i=a
 function hitTestHandles(nx,ny){if(ana.selectedIdx<0)return null;const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect(),T=16,h=(hx,hy)=>Math.hypot((nx-hx)*b.width,(ny-hy)*b.height);if(a.type==="line"){if(h(a.nx1,a.ny1)<T)return"p1";if(h(a.nx2,a.ny2)<T)return"p2";}else if(a.type==="circle"){if(h(a.ncx,a.ncy)<T)return"center";if(h(a.ncx+a.nr,a.ncy)<T)return"rim";}return null;}
 
 // ---- RAF描画 ----
-function syncCanvas(){const s=$("anaStage"),w=s.clientWidth||1,h=s.clientHeight||1;if(anaCanvas.width!==w||anaCanvas.height!==h){anaCanvas.width=w;anaCanvas.height=h;}}
+function syncCanvas(){const s=$("anaStage"),w=s.clientWidth||1,h=s.clientHeight||1;if(anaCanvas.width!==w||anaCanvas.height!==h){anaCanvas.width=w;anaCanvas.height=h;clampZoom();}}
 function startAnaRaf(){
   if(ana.rafId)cancelAnimationFrame(ana.rafId);
   function render(){
@@ -685,12 +692,22 @@ function updateAnaTime(){
 }
 
 // ---- 動画ロード ----
-function loadAnaBlob(blob){loadAnaSource(URL.createObjectURL(blob));}
-function loadAnaSource(src){anaVideo.src=src;anaVideo.load();anaVideo.onloadedmetadata=()=>{$("anaUpload").classList.add("hidden");["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.remove("hidden"));anaVideo.loop=true;anaStopSeg();anaClearMarks();ana.trackPoints=[];ana.annotations=[];ana.drawing=null;ana.selectedIdx=-1;zoom.scale=1;zoom.tx=0;zoom.ty=0;startAnaRaf();updateAnaTime();if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");};}
+let anaBlob=null,anaRestored=false,anaSaveT=null;
+function saveAnaMeta(){idbSet("anaMeta",{marks:anaMarks,annotations:ana.annotations,trackPoints:ana.trackPoints});}
+function anaTouch(){if(anaSaveT)clearTimeout(anaSaveT);anaSaveT=setTimeout(saveAnaMeta,800);}
+async function restoreAna(){
+  if(anaRestored||anaBlob)return;anaRestored=true;
+  const b=await idbGet("anaVid");if(!b)return;
+  const meta=await idbGet("anaMeta");
+  if(meta){if(meta.marks)Object.keys(meta.marks).forEach(k=>anaMarks[k]=meta.marks[k]);if(meta.annotations)ana.annotations=meta.annotations;if(meta.trackPoints)ana.trackPoints=meta.trackPoints;}
+  anaBlob=b;loadAnaSource(URL.createObjectURL(b),true);
+}
+function loadAnaBlob(blob){anaBlob=blob;anaRestored=true;idbSet("anaVid",blob);loadAnaSource(URL.createObjectURL(blob));}
+function loadAnaSource(src,keep){anaVideo.src=src;anaVideo.load();anaVideo.onloadedmetadata=()=>{$("anaUpload").classList.add("hidden");["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.remove("hidden"));anaVideo.loop=true;anaStopSeg();if(!keep){anaClearMarks();ana.trackPoints=[];ana.annotations=[];}else anaRefreshNodes();ana.drawing=null;ana.selectedIdx=-1;zoom.scale=1;zoom.tx=0;zoom.ty=0;startAnaRaf();updateAnaTime();if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");};}
 $("pickVideoBtn").onclick=()=>$("videoFileInput").click();
 $("dropZone").onclick=e=>{if(e.target===$("pickVideoBtn"))return;$("videoFileInput").click();};
-$("videoFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadAnaSource(URL.createObjectURL(f));};
-$("changeVideoBtn").onclick=()=>{anaStopSeg();anaClearMarks();if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}if(isFs)exitFs();anaVideo.pause();anaVideo.src="";["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.add("hidden"));$("anaUpload").classList.remove("hidden");$("videoFileInput").value="";$("iosNote").classList.add("hidden");};
+$("videoFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadAnaBlob(f);};
+$("changeVideoBtn").onclick=()=>{anaStopSeg();anaClearMarks();anaBlob=null;anaRestored=true;idbDel("anaVid");idbDel("anaMeta");if(ana.rafId){cancelAnimationFrame(ana.rafId);ana.rafId=null;}if(isFs)exitFs();anaVideo.pause();anaVideo.src="";["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.add("hidden"));$("anaUpload").classList.remove("hidden");$("videoFileInput").value="";$("iosNote").classList.add("hidden");};
 
 // ---- 全画面（v2.2: 自動非表示なし・ドロワー式）----
 function enterFs(){isFs=true;$("anaStage").classList.add("fs");$("fsFab").style.display="none";$("fsSide").style.display="flex";$("fsDrawer").classList.remove("hidden-drawer");$("fsPanelToggle").classList.add("on");setTimeout(syncCanvas,60);}
@@ -731,7 +748,7 @@ const activePointers=new Map(); // pointerId -> {cx,cy}
 const gesture={mode:"none",startDist:0,startScale:1,startTx:0,startTy:0,startMidCx:0,startMidCy:0,downCx:0,downCy:0,moved:false};
 const TAP_THR=8;
 
-function canvasScale(){const r=anaCanvas.getBoundingClientRect();return{sx:anaCanvas.width/r.width,sy:anaCanvas.height/r.height,rect:r};}
+function canvasScale(){const r=anaCanvas.getBoundingClientRect();const w=r.width||1,h=r.height||1;return{sx:anaCanvas.width/w,sy:anaCanvas.height/h,rect:r};}
 function twoPointerData(){
   const pts=[...activePointers.values()];
   const dist=Math.hypot(pts[0].cx-pts[1].cx,pts[0].cy-pts[1].cy);
@@ -776,12 +793,13 @@ anaCanvas.addEventListener("pointermove",e=>{
 
   // ピンチ処理（中心固定・累積なし）
   if(gesture.mode==="pinch"&&activePointers.size>=2){
+    if(!(anaVideo.videoWidth>0&&anaVideo.videoHeight>0))return;
     const{dist,midCx,midCy}=twoPointerData();
     let ns=gesture.startScale*(dist/gesture.startDist);
     if(!isFinite(ns)||isNaN(ns))ns=gesture.startScale;
     ns=Math.max(1,Math.min(4,ns));
-    const{sx,rect}=canvasScale();
-    const mX=(midCx-rect.left)*sx,mY=(midCy-rect.top)*sx;
+    const{sx,sy,rect}=canvasScale();
+    const mX=(midCx-rect.left)*sx,mY=(midCy-rect.top)*sy;
     // 開始中点の下にあったコンテンツ座標を、現在中点に合わせて固定
     const cX=(gesture.startMidCx-gesture.startTx)/gesture.startScale;
     const cY=(gesture.startMidCy-gesture.startTy)/gesture.startScale;
@@ -841,9 +859,10 @@ function endPointer(e){
       if(isFs&&!$("fsDrawer").classList.contains("hidden-drawer")){$("fsDrawer").classList.add("hidden-drawer");$("fsPanelToggle").classList.remove("on");setTimeout(syncCanvas,60);}
     }
   }
-  ana.dragging=false;ana.dragHandle=null;
+  ana.dragging=false;ana.dragHandle=null;anaTouch();
   // 残りポインタで状態リセット
   if(activePointers.size===0){gesture.mode="none";clampZoom();}
+  else if(activePointers.size>=2&&gesture.mode==="pinch"){const{dist,midCx,midCy}=twoPointerData();gesture.startDist=dist>10?dist:10;gesture.startScale=zoom.scale;gesture.startTx=zoom.tx;gesture.startTy=zoom.ty;const{sx,sy,rect}=canvasScale();gesture.startMidCx=(midCx-rect.left)*sx;gesture.startMidCy=(midCy-rect.top)*sy;}
   else if(activePointers.size===1){gesture.mode="single";gesture.moved=true;const p=[...activePointers.values()][0];gesture.downCx=p.cx;gesture.downCy=p.cy;gesture.startTx=zoom.tx;gesture.startTy=zoom.ty;}
 }
 anaCanvas.addEventListener("pointerup",e=>{e.preventDefault();endPointer(e);});
@@ -899,11 +918,11 @@ $("anaNodeMenuClose").onclick=anaCloseMenu;
 $("anaNodeMenu").addEventListener("click",e=>{if(e.target===$("anaNodeMenu"))anaCloseMenu();});
 $("anaNodeSegBtn").onclick=()=>{const k=anaMenuEv;anaCloseMenu();if(k!=null)anaPlaySeg(k);};
 $("anaNodeGoBtn").onclick=()=>{if(anaMenuEv!=null){anaStopSeg();anaVideo.pause();try{anaVideo.currentTime=anaMarks[anaMenuEv];}catch(e){}}anaCloseMenu();};
-$("anaNodeDelBtn").onclick=()=>{if(anaMenuEv!=null){delete anaMarks[anaMenuEv];anaRefreshNodes();}anaCloseMenu();};
+$("anaNodeDelBtn").onclick=()=>{if(anaMenuEv!=null){delete anaMarks[anaMenuEv];anaRefreshNodes();anaTouch();}anaCloseMenu();};
 $("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
   const k=b.dataset.ev;
   const wasLong=longPress(b,()=>{if(anaMarks[k]==null)return false;anaOpenMenu(k);});
-  b.onclick=()=>{if(wasLong())return;anaMarks[k]=anaVideo.currentTime;anaRefreshNodes();};
+  b.onclick=()=>{if(wasLong())return;anaMarks[k]=anaVideo.currentTime;anaRefreshNodes();anaTouch();};
 });
 holdRepeat($("prevFrameBtn"),()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);});
 holdRepeat($("nextFrameBtn"),()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;});
@@ -959,12 +978,6 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     el.textContent=(side==="A"?"自分":"お手本")+"の動画を読み込めませんでした。別の動画で試すか、iOSは「ファイルを選択」からmp4/movを選んでみてください。";
   }
   function clearLoadError(){const e=$("cmpLoadErr");if(e)e.remove();}
-  // ---- 保存（IndexedDB：動画そのものとマークを端末に残す）----
-  const DBN="swingclipper",ST="cmp";
-  function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DBN,1);}catch(e){return rej(e);}r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
-  async function idbSet(k,v){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction(ST,"readwrite");t.objectStore(ST).put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
-  async function idbGet(k){try{const d=await idbOpen();return await new Promise((res,rej)=>{const t=d.transaction(ST,"readonly"),q=t.objectStore(ST).get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}catch(e){return null;}}
-  async function idbDel(k){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction(ST,"readwrite");t.objectStore(ST).delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
   function saveVid(side){if(cmp.blob[side])idbSet(side==="A"?"vidA":"vidB",cmp.blob[side]);}
   function saveMeta(){idbSet("meta",{marks:cmp.marks,offset:cmp.offset,view:cmp.view});}
 
@@ -1233,7 +1246,11 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab!=="cmp")stopAll();else tryRestore();}));
 })();
 
+["undoBtn","clearAllBtn","selDelBtn","fsUndoBtn","fsClearBtn","fsSelDelBtn"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",anaTouch);});
+document.querySelectorAll('.tab-btn[data-tab="ana"]').forEach(b=>b.addEventListener("click",restoreAna));
+
 // ---- 起動 ----
+restoreClips();
 checkSupport();
 if(window.self!==window.top){$("compatWarn").classList.remove("hidden");$("compatWarn").innerHTML="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。";}
 </script>
