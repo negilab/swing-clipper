@@ -284,6 +284,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-node .mt{display:none;font-family:"JetBrains Mono",monospace;font-size:9px;opacity:.9;line-height:1;}
 .cmp-node.showtime .dots{display:none;}
 .cmp-node.showtime .mt{display:block;}
+.cmp-node.armed{background:rgba(184,255,60,.22);color:var(--impact);border-color:var(--impact);}
+.cmp-segchip{flex:none;padding:6px 11px;font-size:11px;border-radius:8px;color:var(--muted);}
+.cmp-segchip.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.cmp-segchip:disabled{opacity:.75;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
 #cmpNodeDel{color:var(--danger);border-color:rgba(255,107,94,.35);}
@@ -322,7 +326,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.0</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v3.1</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -493,6 +497,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <button class="cmp-clear" id="cmpClearMarks">マーク消去</button>
       </div>
       <div class="cmp-sub" id="cmpSyncSub" style="display:none">
+        <button class="cmp-segchip" id="cmpSegChip" disabled>再生範囲: 全体</button>
         <span class="cmp-sub-hint">ズレ微調整:</span>
         <div class="cmp-nudge self"><b>自分</b><button data-nudge="A" data-dir="-1">◀</button><span class="ofs" id="cmpOfsA">+0.00s</span><button data-nudge="A" data-dir="1">▶</button></div>
         <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
@@ -504,6 +509,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="cmp-picker-panel">
       <div class="cmp-picker-head"><h3 id="cmpNodeMenuTitle">節目</h3><button id="cmpNodeMenuClose">✕</button></div>
       <div class="cmp-nodemenu-acts">
+        <button id="cmpNodePlay">この区間を再生（前後の節目まで）</button>
         <button id="cmpNodeGo">この位置へ移動</button>
         <button id="cmpNodeDel">このマークを削除</button>
       </div>
@@ -859,7 +865,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
   const sideEl=s=>s==="B"?vB:vA;
   const isSync=()=>cmp.target==="sync";
   const curV=()=>cmp.target==="B"?vB:vA;
@@ -940,10 +946,42 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- 同期再生（rAFでフェーズを進め両動画をシーク）----
   function setPlayBtn(on){$("cmpPlay").textContent=on?"⏸":"▶";}
-  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);if(cmp.phase>=1){cmp.phase=1;applyPhase();stopSync();return;}applyPhase();}
-  function startSync(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
+  // 選択中の節目 → 前後の節目までの区間（フェーズ範囲）
+  function segRange(){
+    if(!cmp.seg)return null;
+    const act=activeEvents();const i=act.indexOf(cmp.seg);
+    if(i<0||act.length<2)return null;
+    const n=act.length-1;
+    return[Math.max(0,i-1)/n,Math.min(n,i+1)/n];
+  }
+  function segLabel(){
+    const act=activeEvents();const i=act.indexOf(cmp.seg);
+    if(i<0||act.length<2)return null;
+    const n=act.length-1;
+    return JP[act[Math.max(0,i-1)]]+"→"+JP[act[Math.min(n,i+1)]];
+  }
+  function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);const r=segRange();if(r){if(cmp.phase>=r[1])cmp.phase=r[0];applyPhase();return;}if(cmp.phase>=1){cmp.phase=1;applyPhase();stopSync();return;}applyPhase();}
+  function startSync(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;const r=segRange();if(r)cmp.phase=r[0];else if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
   function stopSync(){cmp.playing=false;if(cmp.raf)cancelAnimationFrame(cmp.raf);cmp.raf=null;setPlayBtn(false);}
-  function stopAll(){stopSync();vA.pause();vB.pause();setPlayBtn(false);}
+  // 片側だけの区間ループ再生（自分/お手本モード用・そのサイドのマークを使用）
+  let sideLoop=null;
+  function stopSideLoop(){if(sideLoop){clearInterval(sideLoop);sideLoop=null;}}
+  function sideNodes(side){return EVENTS.map(([k])=>k).filter(k=>cmp.marks[side][k]!=null);}
+  function playSideSegment(side,k){
+    const list=sideNodes(side),i=list.indexOf(k);
+    if(i<0||list.length<2)return;
+    const t0=cmp.marks[side][list[Math.max(0,i-1)]],t1=cmp.marks[side][list[Math.min(list.length-1,i+1)]];
+    if(!(t1>t0))return;
+    const v=sideEl(side);stopSideLoop();
+    v.playbackRate=Math.max(0.25,cmp.rate);setTime(v,t0);
+    const p=v.play();if(p&&p.catch)p.catch(()=>{});
+    setPlayBtn(true);
+    sideLoop=setInterval(()=>{
+      if(v.paused){stopSideLoop();setPlayBtn(false);return;}
+      if(v.currentTime>=t1-0.005){try{v.currentTime=t0;}catch(e){}}
+    },40);
+  }
+  function stopAll(){stopSync();stopSideLoop();vA.pause();vB.pause();setPlayBtn(false);}
 
   // ---- 再生/スクラブ/コマ送り（対象＝自分/お手本/同期で切替）----
   function togglePlay(){
@@ -986,7 +1024,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     b.addEventListener("pointercancel",()=>{cancelHold();fired=false;});
     b.onclick=()=>{
       if(fired){fired=false;return;}
-      if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();}
+      if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.seg=(cmp.seg===k)?null:k;cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();refreshNodes();}
       else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();}
     };
   });
@@ -997,11 +1035,13 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function openNodeMenu(k){
     menuEv=k;
     $("cmpNodeMenuTitle").textContent=(cmp.target==="A"?"自分":"お手本")+"・"+JP[k]+"  "+fmtTime(cmp.marks[cmp.target][k]);
+    $("cmpNodePlay").disabled=sideNodes(cmp.target).length<2;
     $("cmpNodeMenu").classList.remove("hidden");
   }
   function closeNodeMenu(){$("cmpNodeMenu").classList.add("hidden");menuEv=null;}
   $("cmpNodeMenuClose").onclick=closeNodeMenu;
   $("cmpNodeMenu").addEventListener("click",e=>{if(e.target===$("cmpNodeMenu"))closeNodeMenu();});
+  $("cmpNodePlay").onclick=()=>{const k=menuEv;closeNodeMenu();if(k!=null)playSideSegment(cmp.target,k);};
   $("cmpNodeGo").onclick=()=>{if(menuEv!=null){const t=cmp.marks[cmp.target][menuEv];if(t!=null){const v=curV();v.pause();setPlayBtn(false);setTime(v,t);updateTransportUI();}}closeNodeMenu();};
   $("cmpNodeDel").onclick=()=>{if(menuEv!=null){delete cmp.marks[cmp.target][menuEv];refreshNodes();}closeNodeMenu();};
 
@@ -1067,6 +1107,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   // ---- リフレッシュ ----
   function refreshNodes(){
     const sync=isSync();
+    if(cmp.seg&&activeEvents().indexOf(cmp.seg)<0)cmp.seg=null;
     $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
       const k=b.dataset.ev,am=cmp.marks.A[k]!=null,bm=cmp.marks.B[k]!=null;
       b.querySelector(".a").classList.toggle("on",am);
@@ -1074,10 +1115,18 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       const mine=!sync&&(cmp.target==="A"?am:bm);
       b.classList.toggle("marked",mine);
       b.classList.toggle("showtime",mine);
+      b.classList.toggle("armed",sync&&cmp.seg===k);
       if(mine)b.querySelector(".mt").textContent=fmtTime(cmp.marks[cmp.target][k]);
       b.disabled=sync&&!(am&&bm);
     });
+    updateSegChip();
   }
+  function updateSegChip(){
+    const el=$("cmpSegChip"),lbl=cmp.seg?segLabel():null;
+    if(lbl){el.textContent="区間: "+lbl+" ✕";el.disabled=false;el.classList.add("on");}
+    else{el.textContent="再生範囲: 全体";el.disabled=true;el.classList.remove("on");}
+  }
+  $("cmpSegChip").onclick=()=>{stopSync();cmp.seg=null;refreshNodes();};
   function refreshAll(){refreshNodes();updateNudgeUI();updateTransportUI();}
 
   // ---- 動画変更 ----
