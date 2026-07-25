@@ -354,7 +354,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.3</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.4</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -712,9 +712,16 @@ function startAnaRaf(){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,anaCanvas.width,anaCanvas.height);
     // 映像はCSSで拡大した<video>が直接描くので、キャンバスは注釈だけを等倍で描く
-    const T=anaVideo.currentTime,pts=ana.trackPoints.filter(p=>p.t<=T+.001).sort((a,b)=>a.t-b.t);
-    if(pts.length>=2){ctx.beginPath();const p0=normToBase(pts[0].nx,pts[0].ny);ctx.moveTo(p0.x,p0.y);for(let i=1;i<pts.length;i++){const p=normToBase(pts[i].nx,pts[i].ny);ctx.lineTo(p.x,p.y);}ctx.strokeStyle=ana.color;ctx.lineWidth=1;ctx.lineJoin="round";ctx.lineCap="round";ctx.shadowColor=ana.color;ctx.shadowBlur=2;ctx.stroke();ctx.shadowBlur=0;}
-    if(pts.length){const lp=pts[pts.length-1],{x,y}=normToBase(lp.nx,lp.ny);ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle=ana.color;ctx.fill();}
+    const _tp=ana.trackPoints;
+    if(_tp&&_tp.length>=2){
+      const sp=_tp.slice().sort((a,b)=>a.t-b.t).map(p=>normToBase(p.nx,p.ny));
+      ctx.beginPath();ctx.moveTo(sp[0].x,sp[0].y);
+      for(let i=1;i<sp.length-1;i++){const mx=(sp[i].x+sp[i+1].x)/2,my=(sp[i].y+sp[i+1].y)/2;ctx.quadraticCurveTo(sp[i].x,sp[i].y,mx,my);}
+      ctx.lineTo(sp[sp.length-1].x,sp[sp.length-1].y);
+      ctx.strokeStyle=ana.color;ctx.lineWidth=1.3;ctx.lineJoin="round";ctx.lineCap="round";ctx.shadowColor=ana.color;ctx.shadowBlur=2;ctx.stroke();ctx.shadowBlur=0;
+      const T=anaVideo.currentTime;let best=_tp[0];for(const p of _tp)if(Math.abs(p.t-T)<Math.abs(best.t-T))best=p;
+      const bp=normToBase(best.nx,best.ny);ctx.beginPath();ctx.arc(bp.x,bp.y,3.5,0,Math.PI*2);ctx.fillStyle=ana.color;ctx.fill();
+    }
     for(let i=0;i<ana.annotations.length;i++){const a=ana.annotations[i];ctx.strokeStyle=a.color;ctx.lineWidth=i===ana.selectedIdx?1.2:0.85;ctx.lineCap="round";ctx.shadowColor=a.color;ctx.shadowBlur=1;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=0;}
     if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect();ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=0.8;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.stroke();}}
     if(ana.drawing){const d=ana.drawing;ctx.strokeStyle=ana.color;ctx.lineWidth=0.85;ctx.lineCap="round";ctx.setLineDash([6,4]);if(d.type==="line"){const{x:x1,y:y1}=normToBase(d.nx1,d.ny1);const{x:x2,y:y2}=normToBase(d.nx2??d.nx1,d.ny2??d.ny1);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(d.type==="circle"){const{x:cx,y:cy}=normToBase(d.ncx,d.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,(d.nr??0)*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);}
@@ -1636,6 +1643,17 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 document.querySelectorAll('.tab-btn[data-tab="ana"]').forEach(b=>b.addEventListener("click",restoreAna));
 
 // ---- 手の軌跡（骨格推定・分析タブ）----
+// 検出点の外れ値除去＋平滑化（メディアン→移動平均）。スイングの形は保ち、単発の飛びだけ消す
+function smoothTraj(pts){
+  if(!pts||pts.length<5)return pts||[];
+  const p=pts.slice().sort((a,b)=>a.t-b.t);
+  const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s[s.length>>1];};
+  const medfilt=(v,k)=>{const h=k>>1;return v.map((_,i)=>{const w=[];for(let j=Math.max(0,i-h);j<=Math.min(v.length-1,i+h);j++)w.push(v[j]);return med(w);});};
+  const ma=(v,w)=>v.map((_,i)=>{let s=0,c=0;for(let j=Math.max(0,i-w);j<=Math.min(v.length-1,i+w);j++){s+=v[j];c++;}return s/c;});
+  let xs=medfilt(p.map(o=>o.nx),5), ys=medfilt(p.map(o=>o.ny),5);
+  xs=ma(xs,1); ys=ma(ys,1);
+  return p.map((o,i)=>({t:o.t,nx:xs[i],ny:ys[i]}));
+}
 let anaTracing=false;
 $("anaTraceBtn").onclick=async()=>{
   if(anaTracing)return;
@@ -1649,7 +1667,7 @@ $("anaTraceBtn").onclick=async()=>{
     const pts=await window.SC_traceHand(anaVideo,t0,t1,1/30,(pr)=>{prog.textContent="解析中 "+Math.round(pr*100)+"%";});
     const good=pts.filter(p=>p.nx!=null&&p.v>0.3);
     if(good.length<3){prog.textContent="手を検出できませんでした（画角/明るさが原因かも）";}
-    else{ana.trackPoints=good.map(p=>({t:p.t,nx:p.nx,ny:p.ny}));prog.textContent="完了："+good.length+"／"+pts.length+"フレーム検出。再生・スクラブで軌跡が伸びます";anaTouch();}
+    else{ana.trackPoints=smoothTraj(good.map(p=>({t:p.t,nx:p.nx,ny:p.ny})));prog.textContent="完了："+good.length+"／"+pts.length+"フレーム検出（平滑化済み）";anaTouch();}
   }catch(e){prog.textContent="読み込みエラー："+((e&&e.message)||e);}
   try{anaVideo.currentTime=keepT;}catch(e){}
   btn.disabled=false;anaTracing=false;
