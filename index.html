@@ -315,6 +315,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .ana-trace-row{display:flex;gap:8px;align-items:center;padding:4px 13px 0;flex-wrap:wrap;}
 .ana-trace-row #anaTraceBtn{flex:0 0 auto;padding:9px 14px;font-size:13px;border-radius:10px;background:rgba(184,255,60,.14);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .ana-trace-row #anaTrajClear{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
+.ana-trace-row .ana-tgl{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
+.ana-trace-row .ana-tgl.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .ana-trace-prog{font-size:11px;color:var(--muted);flex:1;min-width:120px;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
@@ -354,7 +356,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.4</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.5</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -456,7 +458,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
     <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.05">1/20s</button><button class="step-btn" data-step="0.02">1/50s</button><button class="step-btn" data-step="0.01">1/100s</button><button class="step-btn" data-step="0.005">1/200s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
     <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><div class="cmp-selbar" id="anaSelBar" style="display:none"><button class="cmp-jog" id="anaJogPrev">◀</button><button class="cmp-segchip on" id="anaSegChip">選択中 ✕</button><button class="cmp-jog" id="anaJogNext">▶</button></div><span class="cmp-sub-hint">節目=タップで選択（再生範囲/静止画送り）・長押しでマーク/削除</span></div>
-    <div class="ana-trace-row"><button id="anaTraceBtn">🎯 手の軌跡を自動描画</button><button id="anaTrajClear">軌跡消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
+    <div class="ana-trace-row"><button id="anaTraceBtn">🦴 骨格＋軌跡を解析</button><button id="anaSkelTgl" class="ana-tgl on">骨格</button><button id="anaGuideTgl" class="ana-tgl on">基準線・角度</button><button id="anaTrajClear">消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
     <div class="ios-note hidden" id="iosNote">⚠ iOSは再生速度1/5以下が下限になる場合あり。1/50s・1/100s送りはスロー撮影動画(120/240fps)で有効です</div>
   </div>
   <div class="ana-tools hidden" id="anaTools">
@@ -644,7 +646,7 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 // ===== 分析タブ =====
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
-const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
+const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],pose:null,showSkel:true,showGuides:true,drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
 // ---- 端末内保存（IndexedDB）----
 const DBN="swingclipper",ST="cmp";
 function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DBN,1);}catch(e){return rej(e);}r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
@@ -722,6 +724,37 @@ function startAnaRaf(){
       const T=anaVideo.currentTime;let best=_tp[0];for(const p of _tp)if(Math.abs(p.t-T)<Math.abs(best.t-T))best=p;
       const bp=normToBase(best.nx,best.ny);ctx.beginPath();ctx.arc(bp.x,bp.y,3.5,0,Math.PI*2);ctx.fillStyle=ana.color;ctx.fill();
     }
+    // 骨格オーバーレイ（再生位置に最も近いフレーム）
+    if(ana.pose&&ana.pose.length&&(ana.showSkel||ana.showGuides)){
+      const T=anaVideo.currentTime;let fr=ana.pose[0];for(const f of ana.pose)if(Math.abs(f.t-T)<Math.abs(fr.t-T))fr=f;
+      const L=fr&&fr.lm;
+      if(L){
+        const PT=i=>{const q=L[i];return q?normToBase(q.x,q.y):null;};
+        const vis=i=>{const q=L[i];return q&&(q.v==null||q.v>0.3);};
+        if(ana.showSkel){
+          ctx.lineWidth=2.2;ctx.lineCap="round";ctx.strokeStyle="rgba(232,242,236,0.92)";ctx.shadowColor="rgba(0,0,0,0.55)";ctx.shadowBlur=2;
+          for(const bn of POSE_BONES){if(vis(bn[0])&&vis(bn[1])){const a=PT(bn[0]),b=PT(bn[1]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}}
+          ctx.shadowBlur=0;
+          for(const j of POSE_JOINTS){if(vis(j)){const q=PT(j);ctx.beginPath();ctx.arc(q.x,q.y,3,0,Math.PI*2);ctx.fillStyle="#b8ff3c";ctx.fill();}}
+        }
+        if(ana.showGuides){
+          const b=getVideoBaseRect();
+          if(vis(0)){const x=b.left+L[0].x*b.width;ctx.strokeStyle="rgba(184,120,255,0.85)";ctx.lineWidth=1.5;ctx.setLineDash([6,5]);ctx.beginPath();ctx.moveTo(x,b.top);ctx.lineTo(x,b.top+b.height);ctx.stroke();ctx.setLineDash([]);}
+          if(vis(11)&&vis(12)&&vis(23)&&vis(24)){
+            const sh={x:(L[11].x+L[12].x)/2,y:(L[11].y+L[12].y)/2},hp={x:(L[23].x+L[24].x)/2,y:(L[23].y+L[24].y)/2};
+            const A=normToBase(sh.x,sh.y),B=normToBase(hp.x,hp.y);
+            ctx.strokeStyle="#f5a623";ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+            const sa=Math.abs(Math.atan2(hp.x-sh.x,hp.y-sh.y)*180/Math.PI);
+            drawLabel(ctx,(A.x+B.x)/2+8,(A.y+B.y)/2,"背骨 "+sa.toFixed(0)+"°","#f5a623");
+          }
+          if(vis(11)&&vis(12)){
+            const A=PT(11),B=PT(12);ctx.strokeStyle="rgba(245,166,35,0.75)";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+            const sha=Math.atan2(L[12].y-L[11].y,L[12].x-L[11].x)*180/Math.PI;
+            drawLabel(ctx,(A.x+B.x)/2,Math.min(A.y,B.y)-8,"肩 "+sha.toFixed(0)+"°","#f5a623");
+          }
+        }
+      }
+    }
     for(let i=0;i<ana.annotations.length;i++){const a=ana.annotations[i];ctx.strokeStyle=a.color;ctx.lineWidth=i===ana.selectedIdx?1.2:0.85;ctx.lineCap="round";ctx.shadowColor=a.color;ctx.shadowBlur=1;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=0;}
     if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect();ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=0.8;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.stroke();}}
     if(ana.drawing){const d=ana.drawing;ctx.strokeStyle=ana.color;ctx.lineWidth=0.85;ctx.lineCap="round";ctx.setLineDash([6,4]);if(d.type==="line"){const{x:x1,y:y1}=normToBase(d.nx1,d.ny1);const{x:x2,y:y2}=normToBase(d.nx2??d.nx1,d.ny2??d.ny1);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(d.type==="circle"){const{x:cx,y:cy}=normToBase(d.ncx,d.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,(d.nr??0)*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);}
@@ -741,17 +774,17 @@ function updateAnaTime(){
 
 // ---- 動画ロード ----
 let anaBlob=null,anaRestored=false,anaSaveT=null;
-function saveAnaMeta(){idbSet("anaMeta",{marks:anaMarks,annotations:ana.annotations,trackPoints:ana.trackPoints});}
+function saveAnaMeta(){idbSet("anaMeta",{marks:anaMarks,annotations:ana.annotations,trackPoints:ana.trackPoints,pose:ana.pose?ana.pose.map(f=>({t:+f.t.toFixed(3),lm:f.lm?f.lm.map(pt=>({x:+pt.x.toFixed(4),y:+pt.y.toFixed(4),v:+(pt.v||0).toFixed(2)})):null})):null,showSkel:ana.showSkel,showGuides:ana.showGuides});}
 function anaTouch(){if(anaSaveT)clearTimeout(anaSaveT);anaSaveT=setTimeout(saveAnaMeta,800);}
 async function restoreAna(){
   if(anaRestored||anaBlob)return;anaRestored=true;
   const b=await idbGet("anaVid");if(!b)return;
   const meta=await idbGet("anaMeta");
-  if(meta){if(meta.marks)Object.keys(meta.marks).forEach(k=>anaMarks[k]=meta.marks[k]);if(meta.annotations)ana.annotations=meta.annotations;if(meta.trackPoints)ana.trackPoints=meta.trackPoints;}
+  if(meta){if(meta.marks)Object.keys(meta.marks).forEach(k=>anaMarks[k]=meta.marks[k]);if(meta.annotations)ana.annotations=meta.annotations;if(meta.trackPoints)ana.trackPoints=meta.trackPoints;if(meta.pose)ana.pose=meta.pose;if(meta.showSkel!=null)ana.showSkel=meta.showSkel;if(meta.showGuides!=null)ana.showGuides=meta.showGuides;updateOverlayTgl();}
   anaBlob=b;loadAnaSource(URL.createObjectURL(b),true);
 }
 function loadAnaBlob(blob){anaBlob=blob;anaRestored=true;idbSet("anaVid",blob);loadAnaSource(URL.createObjectURL(blob));}
-function loadAnaSource(src,keep){anaVideo.src=src;anaVideo.load();anaVideo.onloadedmetadata=()=>{$("anaUpload").classList.add("hidden");["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.remove("hidden"));anaVideo.loop=true;anaStopSeg();if(!keep){anaClearMarks();ana.trackPoints=[];ana.annotations=[];}else anaRefreshNodes();ana.drawing=null;ana.selectedIdx=-1;resetAnaZoom();startAnaRaf();updateAnaTime();if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");};}
+function loadAnaSource(src,keep){anaVideo.src=src;anaVideo.load();anaVideo.onloadedmetadata=()=>{$("anaUpload").classList.add("hidden");["anaStage","anaPlaybar","anaTools"].forEach(id=>$(id).classList.remove("hidden"));anaVideo.loop=true;anaStopSeg();if(!keep){anaClearMarks();ana.trackPoints=[];ana.annotations=[];ana.pose=null;}else anaRefreshNodes();ana.drawing=null;ana.selectedIdx=-1;resetAnaZoom();startAnaRaf();updateAnaTime();if(/iPad|iPhone|iPod/.test(navigator.userAgent))$("iosNote").classList.remove("hidden");};}
 $("pickVideoBtn").onclick=()=>$("videoFileInput").click();
 $("dropZone").onclick=e=>{if(e.target===$("pickVideoBtn"))return;$("videoFileInput").click();};
 $("videoFileInput").onchange=e=>{const f=e.target.files[0];if(f)loadAnaBlob(f);};
@@ -786,7 +819,7 @@ document.querySelectorAll(".fs-tool").forEach(b=>{b.onclick=()=>{ana.tool=b.data
 document.querySelectorAll(".fs-color").forEach(d=>{d.onclick=()=>{ana.color=d.dataset.color;document.querySelectorAll(".fs-color").forEach(x=>x.classList.toggle("active",x===d));document.querySelectorAll(".color-dot:not(.fs-color)").forEach(x=>x.classList.toggle("active",x.dataset.color===ana.color));};});
 $("fsUndoBtn").onclick=()=>{if(ana.annotations.length>0)ana.annotations.pop();else if(ana.trackPoints.length>0)ana.trackPoints.pop();};
 $("fsSelDelBtn").onclick=()=>{if(ana.selectedIdx>=0){ana.annotations.splice(ana.selectedIdx,1);ana.selectedIdx=-1;updateSelDeleteBtn();}};
-$("fsClearBtn").onclick=()=>{if(confirm("すべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
+$("fsClearBtn").onclick=()=>{if(confirm("すべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.pose=null;ana.selectedIdx=-1;updateSelDeleteBtn();}};
 
 // ---- ピンチズーム（修正版：現在指中点でズーム＋パン）----
 
@@ -931,7 +964,7 @@ document.querySelectorAll(".color-dot").forEach(d=>{d.onclick=()=>{ana.color=d.d
 function updateSelDeleteBtn(){const on=ana.selectedIdx>=0;$("selDelBtn").classList.toggle("show",on);const f=$("fsSelDelBtn");if(f)f.classList.toggle("show",on);}
 $("selDelBtn").onclick=()=>{if(ana.selectedIdx>=0){ana.annotations.splice(ana.selectedIdx,1);ana.selectedIdx=-1;updateSelDeleteBtn();}};
 $("undoBtn").onclick=()=>{if(ana.annotations.length>0)ana.annotations.pop();else if(ana.trackPoints.length>0)ana.trackPoints.pop();};
-$("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をすべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
+$("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をすべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.pose=null;ana.selectedIdx=-1;updateSelDeleteBtn();}};
 
 // ---- 再生 ----
 $("anaPlayBtn").onclick=anaTogglePlay;
@@ -1643,6 +1676,9 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 document.querySelectorAll('.tab-btn[data-tab="ana"]').forEach(b=>b.addEventListener("click",restoreAna));
 
 // ---- 手の軌跡（骨格推定・分析タブ）----
+const POSE_BONES=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[27,31],[24,26],[26,28],[28,32]];
+const POSE_JOINTS=[0,11,12,13,14,15,16,23,24,25,26,27,28];
+function drawLabel(ctx,x,y,text,color){ctx.save();ctx.font="600 12px Inter,system-ui,sans-serif";ctx.textBaseline="alphabetic";const w=ctx.measureText(text).width;ctx.fillStyle="rgba(8,12,10,0.74)";ctx.fillRect(x-3,y-13,w+6,17);ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.restore();}
 // 検出点の外れ値除去＋平滑化（メディアン→移動平均）。スイングの形は保ち、単発の飛びだけ消す
 function smoothTraj(pts){
   if(!pts||pts.length<5)return pts||[];
@@ -1655,24 +1691,33 @@ function smoothTraj(pts){
   return p.map((o,i)=>({t:o.t,nx:xs[i],ny:ys[i]}));
 }
 let anaTracing=false;
+function updateOverlayTgl(){const a=$("anaSkelTgl"),g=$("anaGuideTgl");if(a)a.classList.toggle("on",!!ana.showSkel);if(g)g.classList.toggle("on",!!ana.showGuides);}
 $("anaTraceBtn").onclick=async()=>{
   if(anaTracing)return;
-  if(!window.SC_traceHand){$("anaTraceProg").textContent="この機能が読み込めていません（通信環境をご確認ください）";return;}
+  if(!window.SC_analyzePose){$("anaTraceProg").textContent="この機能が読み込めていません（通信環境をご確認ください）";return;}
   if(isNaN(anaVideo.duration)||anaVideo.duration<=0){$("anaTraceProg").textContent="先に動画を読み込んでください";return;}
   anaTracing=true;const btn=$("anaTraceBtn"),prog=$("anaTraceProg");
   btn.disabled=true;prog.textContent="準備中…（初回はモデル取得で数秒）";
   const keepT=anaVideo.currentTime;anaVideo.pause();anaStopSeg();
   try{
     let t0=0,t1=anaVideo.duration;const r=anaRange();if(r){t0=r[0];t1=r[1];}
-    const pts=await window.SC_traceHand(anaVideo,t0,t1,1/30,(pr)=>{prog.textContent="解析中 "+Math.round(pr*100)+"%";});
-    const good=pts.filter(p=>p.nx!=null&&p.v>0.3);
-    if(good.length<3){prog.textContent="手を検出できませんでした（画角/明るさが原因かも）";}
-    else{ana.trackPoints=smoothTraj(good.map(p=>({t:p.t,nx:p.nx,ny:p.ny})));prog.textContent="完了："+good.length+"／"+pts.length+"フレーム検出（平滑化済み）";anaTouch();}
+    const frames=await window.SC_analyzePose(anaVideo,t0,t1,1/30,(pr)=>{prog.textContent="解析中 "+Math.round(pr*100)+"%";});
+    const withLm=frames.filter(f=>f.lm);
+    if(withLm.length<3){prog.textContent="骨格を検出できませんでした（画角/明るさが原因かも）";}
+    else{
+      ana.pose=frames;ana.showSkel=true;ana.showGuides=true;updateOverlayTgl();
+      const wr=frames.filter(f=>f.lm&&f.lm[15]&&f.lm[16]).map(f=>({t:f.t,nx:(f.lm[15].x+f.lm[16].x)/2,ny:(f.lm[15].y+f.lm[16].y)/2,v:Math.min(f.lm[15].v,f.lm[16].v)})).filter(p=>p.v>0.3);
+      ana.trackPoints=smoothTraj(wr.map(p=>({t:p.t,nx:p.nx,ny:p.ny})));
+      prog.textContent="完了："+withLm.length+"／"+frames.length+"フレーム検出";
+      anaTouch();
+    }
   }catch(e){prog.textContent="読み込みエラー："+((e&&e.message)||e);}
   try{anaVideo.currentTime=keepT;}catch(e){}
   btn.disabled=false;anaTracing=false;
 };
-$("anaTrajClear").onclick=()=>{ana.trackPoints=[];$("anaTraceProg").textContent="";anaTouch();};
+$("anaSkelTgl").onclick=()=>{ana.showSkel=!ana.showSkel;updateOverlayTgl();anaTouch();};
+$("anaGuideTgl").onclick=()=>{ana.showGuides=!ana.showGuides;updateOverlayTgl();anaTouch();};
+$("anaTrajClear").onclick=()=>{ana.trackPoints=[];ana.pose=null;$("anaTraceProg").textContent="";anaTouch();};
 
 // ---- 起動 ----
 restoreClips();
@@ -1691,26 +1736,27 @@ async function ensureLM(){
   await _loading;return _lm;
 }
 function seekTo(v,t){return new Promise(r=>{let done=false;const h=()=>{if(done)return;done=true;v.removeEventListener("seeked",h);r();};v.addEventListener("seeked",h);try{v.currentTime=t;}catch(e){done=true;r();}setTimeout(()=>{if(!done){done=true;v.removeEventListener("seeked",h);r();}},500);});}
-window.SC_traceHand=async function(video,t0,t1,step,onProgress){
+window.SC_analyzePose=async function(video,t0,t1,step,onProgress){
   const lm=await ensureLM();
   const off=document.createElement("canvas"),octx=off.getContext("2d",{willReadFrequently:true});
-  const span=Math.max(0.001,t1-t0),n=Math.min(180,Math.max(4,Math.round(span/step))),dt=span/n;
-  const pts=[];
+  const span=Math.max(0.001,t1-t0),n=Math.min(200,Math.max(4,Math.round(span/step))),dt=span/n;
+  const frames=[];
   for(let i=0;i<=n;i++){
     const t=Math.min(t1,t0+i*dt);
     await seekTo(video,t);
     const w=video.videoWidth||0,h=video.videoHeight||0;
+    let lmk=null;
     if(w&&h){
       if(off.width!==w)off.width=w; if(off.height!==h)off.height=h;
       octx.drawImage(video,0,0,w,h);
       let res=null;try{res=lm.detect(off);}catch(e){}
       const L=res&&res.landmarks&&res.landmarks[0];
-      if(L&&L[15]&&L[16]){const lw=L[15],rw=L[16],vv=x=>(x&&x.visibility!=null)?x.visibility:1;pts.push({t,nx:(lw.x+rw.x)/2,ny:(lw.y+rw.y)/2,v:Math.min(vv(lw),vv(rw))});}
-      else pts.push({t,v:0});
-    } else pts.push({t,v:0});
+      if(L)lmk=L.map(pt=>({x:pt.x,y:pt.y,v:pt.visibility!=null?pt.visibility:1}));
+    }
+    frames.push({t,lm:lmk});
     if(onProgress)onProgress((i+1)/(n+1));
   }
-  return pts;
+  return frames;
 };
 window.SC_poseAvailable=true;
 </script>
