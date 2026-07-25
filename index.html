@@ -312,6 +312,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-segchip.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .cmp-segchip:disabled{opacity:.75;}
 .ana-nodes{display:flex;flex-direction:column;gap:5px;}
+.ana-trace-row{display:flex;gap:8px;align-items:center;padding:4px 13px 0;flex-wrap:wrap;}
+.ana-trace-row #anaTraceBtn{flex:0 0 auto;padding:9px 14px;font-size:13px;border-radius:10px;background:rgba(184,255,60,.14);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.ana-trace-row #anaTrajClear{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
+.ana-trace-prog{font-size:11px;color:var(--muted);flex:1;min-width:120px;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
 #cmpNodeDel,#anaNodeDelBtn,#cmpSrcRemove{color:var(--danger);border-color:rgba(255,107,94,.35);}
@@ -350,7 +354,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.2</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.3</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -452,6 +456,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
     <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.05">1/20s</button><button class="step-btn" data-step="0.02">1/50s</button><button class="step-btn" data-step="0.01">1/100s</button><button class="step-btn" data-step="0.005">1/200s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
     <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><div class="cmp-selbar" id="anaSelBar" style="display:none"><button class="cmp-jog" id="anaJogPrev">◀</button><button class="cmp-segchip on" id="anaSegChip">選択中 ✕</button><button class="cmp-jog" id="anaJogNext">▶</button></div><span class="cmp-sub-hint">節目=タップで選択（再生範囲/静止画送り）・長押しでマーク/削除</span></div>
+    <div class="ana-trace-row"><button id="anaTraceBtn">🎯 手の軌跡を自動描画</button><button id="anaTrajClear">軌跡消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
     <div class="ios-note hidden" id="iosNote">⚠ iOSは再生速度1/5以下が下限になる場合あり。1/50s・1/100s送りはスロー撮影動画(120/240fps)で有効です</div>
   </div>
   <div class="ana-tools hidden" id="anaTools">
@@ -709,7 +714,7 @@ function startAnaRaf(){
     // 映像はCSSで拡大した<video>が直接描くので、キャンバスは注釈だけを等倍で描く
     const T=anaVideo.currentTime,pts=ana.trackPoints.filter(p=>p.t<=T+.001).sort((a,b)=>a.t-b.t);
     if(pts.length>=2){ctx.beginPath();const p0=normToBase(pts[0].nx,pts[0].ny);ctx.moveTo(p0.x,p0.y);for(let i=1;i<pts.length;i++){const p=normToBase(pts[i].nx,pts[i].ny);ctx.lineTo(p.x,p.y);}ctx.strokeStyle=ana.color;ctx.lineWidth=1;ctx.lineJoin="round";ctx.lineCap="round";ctx.shadowColor=ana.color;ctx.shadowBlur=2;ctx.stroke();ctx.shadowBlur=0;}
-    for(const p of pts){const{x,y}=normToBase(p.nx,p.ny);ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle=ana.color;ctx.fill();}
+    if(pts.length){const lp=pts[pts.length-1],{x,y}=normToBase(lp.nx,lp.ny);ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle=ana.color;ctx.fill();}
     for(let i=0;i<ana.annotations.length;i++){const a=ana.annotations[i];ctx.strokeStyle=a.color;ctx.lineWidth=i===ana.selectedIdx?1.2:0.85;ctx.lineCap="round";ctx.shadowColor=a.color;ctx.shadowBlur=1;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=0;}
     if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect();ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=0.8;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.stroke();}}
     if(ana.drawing){const d=ana.drawing;ctx.strokeStyle=ana.color;ctx.lineWidth=0.85;ctx.lineCap="round";ctx.setLineDash([6,4]);if(d.type==="line"){const{x:x1,y:y1}=normToBase(d.nx1,d.ny1);const{x:x2,y:y2}=normToBase(d.nx2??d.nx1,d.ny2??d.ny1);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(d.type==="circle"){const{x:cx,y:cy}=normToBase(d.ncx,d.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,(d.nr??0)*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);}
@@ -1630,10 +1635,66 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 ["undoBtn","clearAllBtn","selDelBtn","fsUndoBtn","fsClearBtn","fsSelDelBtn"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",anaTouch);});
 document.querySelectorAll('.tab-btn[data-tab="ana"]').forEach(b=>b.addEventListener("click",restoreAna));
 
+// ---- 手の軌跡（骨格推定・分析タブ）----
+let anaTracing=false;
+$("anaTraceBtn").onclick=async()=>{
+  if(anaTracing)return;
+  if(!window.SC_traceHand){$("anaTraceProg").textContent="この機能が読み込めていません（通信環境をご確認ください）";return;}
+  if(isNaN(anaVideo.duration)||anaVideo.duration<=0){$("anaTraceProg").textContent="先に動画を読み込んでください";return;}
+  anaTracing=true;const btn=$("anaTraceBtn"),prog=$("anaTraceProg");
+  btn.disabled=true;prog.textContent="準備中…（初回はモデル取得で数秒）";
+  const keepT=anaVideo.currentTime;anaVideo.pause();anaStopSeg();
+  try{
+    let t0=0,t1=anaVideo.duration;const r=anaRange();if(r){t0=r[0];t1=r[1];}
+    const pts=await window.SC_traceHand(anaVideo,t0,t1,1/30,(pr)=>{prog.textContent="解析中 "+Math.round(pr*100)+"%";});
+    const good=pts.filter(p=>p.nx!=null&&p.v>0.3);
+    if(good.length<3){prog.textContent="手を検出できませんでした（画角/明るさが原因かも）";}
+    else{ana.trackPoints=good.map(p=>({t:p.t,nx:p.nx,ny:p.ny}));prog.textContent="完了："+good.length+"／"+pts.length+"フレーム検出。再生・スクラブで軌跡が伸びます";anaTouch();}
+  }catch(e){prog.textContent="読み込みエラー："+((e&&e.message)||e);}
+  try{anaVideo.currentTime=keepT;}catch(e){}
+  btn.disabled=false;anaTracing=false;
+};
+$("anaTrajClear").onclick=()=>{ana.trackPoints=[];$("anaTraceProg").textContent="";anaTouch();};
+
 // ---- 起動 ----
 restoreClips();
 checkSupport();
 if(window.self!==window.top){$("compatWarn").classList.remove("hidden");$("compatWarn").innerHTML="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。";}
+</script>
+<script type="module">
+import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs";
+let _lm=null,_loading=null;
+async function ensureLM(){
+  if(_lm)return _lm;
+  if(!_loading)_loading=(async()=>{
+    const fileset=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm");
+    _lm=await PoseLandmarker.createFromOptions(fileset,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"},runningMode:"IMAGE",numPoses:1,minPoseDetectionConfidence:0.3,minPosePresenceConfidence:0.3});
+  })();
+  await _loading;return _lm;
+}
+function seekTo(v,t){return new Promise(r=>{let done=false;const h=()=>{if(done)return;done=true;v.removeEventListener("seeked",h);r();};v.addEventListener("seeked",h);try{v.currentTime=t;}catch(e){done=true;r();}setTimeout(()=>{if(!done){done=true;v.removeEventListener("seeked",h);r();}},500);});}
+window.SC_traceHand=async function(video,t0,t1,step,onProgress){
+  const lm=await ensureLM();
+  const off=document.createElement("canvas"),octx=off.getContext("2d",{willReadFrequently:true});
+  const span=Math.max(0.001,t1-t0),n=Math.min(180,Math.max(4,Math.round(span/step))),dt=span/n;
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const t=Math.min(t1,t0+i*dt);
+    await seekTo(video,t);
+    const w=video.videoWidth||0,h=video.videoHeight||0;
+    if(w&&h){
+      if(off.width!==w)off.width=w; if(off.height!==h)off.height=h;
+      octx.drawImage(video,0,0,w,h);
+      let res=null;try{res=lm.detect(off);}catch(e){}
+      const L=res&&res.landmarks&&res.landmarks[0];
+      if(L&&L[15]&&L[16]){const lw=L[15],rw=L[16],vv=x=>(x&&x.visibility!=null)?x.visibility:1;pts.push({t,nx:(lw.x+rw.x)/2,ny:(lw.y+rw.y)/2,v:Math.min(vv(lw),vv(rw))});}
+      else pts.push({t,v:0});
+    } else pts.push({t,v:0});
+    if(onProgress)onProgress((i+1)/(n+1));
+  }
+  return pts;
+};
+window.SC_poseAvailable=true;
 </script>
 </body>
 </html>
