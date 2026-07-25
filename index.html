@@ -305,6 +305,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-node.showtime .dots{display:none;}
 .cmp-node.showtime .mt{display:block;}
 .cmp-node.armed{background:rgba(184,255,60,.22);color:var(--impact);border-color:var(--impact);}
+.cmp-selbar{display:flex;gap:6px;align-items:center;}
+.cmp-selbar .cmp-segchip{flex:1;}
+.cmp-jog{flex:0 0 42px;padding:6px;font-size:13px;border-radius:8px;}
 .cmp-segchip{flex:none;padding:6px 11px;font-size:11px;border-radius:8px;color:var(--muted);}
 .cmp-segchip.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
 .cmp-segchip:disabled{opacity:.75;}
@@ -347,7 +350,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.1</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.2</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -448,7 +451,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="seek-row"><input type="range" id="anaSeek" min="0" max="1000" value="0" step="1"><span class="ana-time" id="anaTime">0:00.0</span></div>
     <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
     <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.05">1/20s</button><button class="step-btn" data-step="0.02">1/50s</button><button class="step-btn" data-step="0.01">1/100s</button><button class="step-btn" data-step="0.005">1/200s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
-    <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><span class="cmp-sub-hint">節目ボタン=いまの位置にマーク／長押しで移動・区間再生・削除</span></div>
+    <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><div class="cmp-selbar" id="anaSelBar" style="display:none"><button class="cmp-jog" id="anaJogPrev">◀</button><button class="cmp-segchip on" id="anaSegChip">選択中 ✕</button><button class="cmp-jog" id="anaJogNext">▶</button></div><span class="cmp-sub-hint">節目=タップで選択（再生範囲/静止画送り）・長押しでマーク/削除</span></div>
     <div class="ios-note hidden" id="iosNote">⚠ iOSは再生速度1/5以下が下限になる場合あり。1/50s・1/100s送りはスロー撮影動画(120/240fps)で有効です</div>
   </div>
   <div class="ana-tools hidden" id="anaTools">
@@ -462,8 +465,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="cmp-picker-panel">
       <div class="cmp-picker-head"><h3 id="anaNodeMenuTitle">節目</h3><button id="anaNodeMenuClose">✕</button></div>
       <div class="cmp-nodemenu-acts">
-        <button id="anaNodeSegBtn">この区間を再生（前後の節目まで）</button>
-        <button id="anaNodeGoBtn">この位置へ移動</button>
+        <button id="anaNodeMark">この位置にマーク</button>
         <button id="anaNodeDelBtn">このマークを削除</button>
       </div>
     </div>
@@ -525,6 +527,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <button class="speed-btn cmp-rate" data-rate="0.1">1/10</button>
       </div>
       <div class="cmp-node-row" id="cmpNodeRow"></div>
+      <div class="cmp-selbar" id="cmpSelBar" style="display:none"><button class="mini cmp-jog" id="cmpJogPrev">◀</button><button class="cmp-segchip on" id="cmpSegChip">選択中 ✕</button><button class="mini cmp-jog" id="cmpJogNext">▶</button></div>
       <div class="cmp-sub" id="cmpMarkSub">
         <span class="cmp-sub-hint">節目ボタン=いまの位置にマーク／長押しで移動・削除</span>
         <div class="cmp-step-mini">
@@ -535,7 +538,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <button class="cmp-clear" id="cmpClearMarks">マーク消去</button>
       </div>
       <div class="cmp-sub" id="cmpSyncSub" style="display:none">
-        <button class="cmp-segchip" id="cmpSegChip" disabled>再生範囲: 全体</button>
         <span class="cmp-sub-hint">ズレ微調整:</span>
         <div class="cmp-nudge self"><b>自分</b><button data-nudge="A" data-dir="-1">◀</button><span class="ofs" id="cmpOfsA">+0.00s</span><button data-nudge="A" data-dir="1">▶</button></div>
         <div class="cmp-nudge ref"><b>お手本</b><button data-nudge="B" data-dir="-1">◀</button><span class="ofs" id="cmpOfsB">+0.00s</span><button data-nudge="B" data-dir="1">▶</button></div>
@@ -558,8 +560,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="cmp-picker-panel">
       <div class="cmp-picker-head"><h3 id="cmpNodeMenuTitle">節目</h3><button id="cmpNodeMenuClose">✕</button></div>
       <div class="cmp-nodemenu-acts">
-        <button id="cmpNodePlay">この区間を再生（前後の節目まで）</button>
-        <button id="cmpNodeGo">この位置へ移動</button>
+        <button id="cmpNodeMark">この位置にマーク</button>
         <button id="cmpNodeDel">このマークを削除</button>
       </div>
     </div>
@@ -764,7 +765,7 @@ $("anaCanvas").addEventListener("click",()=>{
 });
 // 全画面シーク・再生
 $("fsSeek").oninput=()=>{if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("fsSeek").value)/1000)*anaVideo.duration;};
-$("fsPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pause();};
+$("fsPlayBtn").onclick=anaTogglePlay;
 anaVideo.onplay=()=>{$("anaPlayBtn").textContent="⏸";$("fsPlayBtn").textContent="⏸";};
 anaVideo.onpause=anaVideo.onended=()=>{$("anaPlayBtn").textContent="▶";$("fsPlayBtn").textContent="▶";};
 document.querySelectorAll("[data-fs-rate]").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.fsRate);document.querySelectorAll("[data-fs-rate]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("[data-rate]").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.rate)===parseFloat(b.dataset.fsRate)));};});
@@ -921,7 +922,7 @@ $("undoBtn").onclick=()=>{if(ana.annotations.length>0)ana.annotations.pop();else
 $("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をすべて消去しますか？")){ana.annotations=[];ana.trackPoints=[];ana.selectedIdx=-1;updateSelDeleteBtn();}};
 
 // ---- 再生 ----
-$("anaPlayBtn").onclick=()=>{if(anaVideo.paused)anaVideo.play();else anaVideo.pause();};
+$("anaPlayBtn").onclick=anaTogglePlay;
 $("anaSeek").oninput=()=>{anaStopSeg();if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("anaSeek").value)/1000)*anaVideo.duration;};
 document.querySelectorAll(".speed-btn").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.rate);document.querySelectorAll(".speed-btn").forEach(x=>x.classList.toggle("active",x===b));};});
 document.querySelectorAll("[data-step]").forEach(b=>{b.onclick=()=>{stepSize=parseFloat(b.dataset.step);document.querySelectorAll("[data-step]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".fs-step").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.fsStep)===stepSize));};});
@@ -938,35 +939,41 @@ function holdRepeat(el,fn){
   window.addEventListener("blur",stop);
 }
 // ---- 分析タブ 節目マーク ----
-const anaMarks={},ANA_JP=Object.fromEntries(SWING_EVENTS);
+const anaMarks={},anaSel=new Set(),ANA_JP=Object.fromEntries(SWING_EVENTS);
 $("anaNodeRow").innerHTML=SWING_EVENTS.map(([k,n])=>`<button class="cmp-node" data-ev="${k}"><span>${n}</span><span class="mt"></span></button>`).join("");
 function anaNodeList(){return SWING_EVENTS.map(([k])=>k).filter(k=>anaMarks[k]!=null);}
-function anaRefreshNodes(){$("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{const k=b.dataset.ev,on=anaMarks[k]!=null;b.classList.toggle("marked",on);b.classList.toggle("showtime",on);if(on)b.querySelector(".mt").textContent=fmtSec(anaMarks[k]);});}
-function anaClearMarks(){Object.keys(anaMarks).forEach(k=>delete anaMarks[k]);anaRefreshNodes();}
+function anaRefreshNodes(){$("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{const k=b.dataset.ev,on=anaMarks[k]!=null;b.classList.toggle("marked",on);b.classList.toggle("showtime",on);b.classList.toggle("armed",anaSel.has(k));if(on)b.querySelector(".mt").textContent=fmtSec(anaMarks[k]);});anaUpdateSelBar();}
+function anaRange(){
+  const sel=anaNodeList().filter(k=>anaSel.has(k));if(!sel.length)return null;
+  if(sel.length>=2){const ts=sel.map(k=>anaMarks[k]).sort((a,b)=>a-b);return[ts[0],ts[ts.length-1]];}
+  const list=anaNodeList(),i=list.indexOf(sel[0]);
+  const t0=anaMarks[list[Math.max(0,i-1)]],t1=anaMarks[list[Math.min(list.length-1,i+1)]];
+  return(t1>t0)?[Math.min(t0,t1),Math.max(t0,t1)]:null;
+}
+function anaRangeLabel(){const r=anaRange();if(!r)return null;const list=anaNodeList();const near=t=>list.reduce((b,k)=>Math.abs(anaMarks[k]-t)<Math.abs(anaMarks[b]-t)?k:b,list[0]);return ANA_JP[near(r[0])]+"〜"+ANA_JP[near(r[1])];}
+function anaUpdateSelBar(){const size=anaSel.size,jog=size>=2?"flex":"none";$("anaSelBar").style.display=size?"flex":"none";$("anaJogPrev").style.display=jog;$("anaJogNext").style.display=jog;const lbl=anaRangeLabel();$("anaSegChip").textContent=(lbl?"区間: "+lbl:"選択中")+" ✕";}
+function anaAnchors(){return anaNodeList().filter(k=>anaSel.has(k)).map(k=>anaMarks[k]).sort((a,b)=>a-b);}
+function anaJog(dir){const a=anaAnchors();if(a.length<2)return;anaStopSeg();anaVideo.pause();const cur=anaVideo.currentTime;let idx;if(dir>0){idx=a.findIndex(x=>x>cur+1e-4);if(idx<0)idx=a.length-1;}else{idx=0;for(let j=a.length-1;j>=0;j--){if(a[j]<cur-1e-4){idx=j;break;}}}try{anaVideo.currentTime=a[Math.max(0,Math.min(a.length-1,idx))];}catch(e){}}
+function anaPlayRange(){const r=anaRange();anaStopSeg();if(r){if(anaVideo.currentTime<r[0]-0.02||anaVideo.currentTime>=r[1]-0.005){try{anaVideo.currentTime=r[0];}catch(e){}}anaSegLoop=setInterval(()=>{if(anaVideo.paused){anaStopSeg();return;}if(anaVideo.currentTime>=r[1]-0.005){try{anaVideo.currentTime=r[0];}catch(e){}}},40);}const p=anaVideo.play();if(p&&p.catch)p.catch(()=>{});}
+function anaTogglePlay(){if(!anaVideo.paused||anaSegLoop){anaVideo.pause();anaStopSeg();}else anaPlayRange();}
+function anaSeekTo(k){const t=anaMarks[k];if(t!=null){anaStopSeg();anaVideo.pause();try{anaVideo.currentTime=t;}catch(e){}}}
+$("anaSegChip").onclick=()=>{anaSel.clear();anaStopSeg();anaVideo.pause();anaRefreshNodes();};
+$("anaJogPrev").onclick=()=>anaJog(-1);
+$("anaJogNext").onclick=()=>anaJog(1);
+function anaClearMarks(){Object.keys(anaMarks).forEach(k=>delete anaMarks[k]);anaSel.clear();anaRefreshNodes();}
 let anaSegLoop=null;
 function anaStopSeg(){if(anaSegLoop){clearInterval(anaSegLoop);anaSegLoop=null;}}
-function anaPlaySeg(k){
-  const list=anaNodeList(),i=list.indexOf(k);
-  if(i<0||list.length<2)return;
-  const t0=anaMarks[list[Math.max(0,i-1)]],t1=anaMarks[list[Math.min(list.length-1,i+1)]];
-  if(!(t1>t0))return;
-  anaStopSeg();
-  try{anaVideo.currentTime=t0;}catch(e){}
-  const pr=anaVideo.play();if(pr&&pr.catch)pr.catch(()=>{});
-  anaSegLoop=setInterval(()=>{if(anaVideo.paused){anaStopSeg();return;}if(anaVideo.currentTime>=t1-0.005){try{anaVideo.currentTime=t0;}catch(e){}}},40);
-}
 let anaMenuEv=null;
-function anaOpenMenu(k){anaMenuEv=k;$("anaNodeMenuTitle").textContent=ANA_JP[k]+"  "+fmtSec(anaMarks[k]);$("anaNodeSegBtn").disabled=anaNodeList().length<2;$("anaNodeMenu").classList.remove("hidden");}
+function anaOpenMenu(k){anaMenuEv=k;const marked=anaMarks[k]!=null;$("anaNodeMenuTitle").textContent=ANA_JP[k]+(marked?"  "+fmtSec(anaMarks[k]):"（未マーク）");$("anaNodeMark").textContent=marked?"この位置にマークし直す":"この位置にマーク";$("anaNodeDelBtn").style.display=marked?"flex":"none";$("anaNodeMenu").classList.remove("hidden");}
 function anaCloseMenu(){$("anaNodeMenu").classList.add("hidden");anaMenuEv=null;}
 $("anaNodeMenuClose").onclick=anaCloseMenu;
 $("anaNodeMenu").addEventListener("click",e=>{if(e.target===$("anaNodeMenu"))anaCloseMenu();});
-$("anaNodeSegBtn").onclick=()=>{const k=anaMenuEv;anaCloseMenu();if(k!=null)anaPlaySeg(k);};
-$("anaNodeGoBtn").onclick=()=>{if(anaMenuEv!=null){anaStopSeg();anaVideo.pause();try{anaVideo.currentTime=anaMarks[anaMenuEv];}catch(e){}}anaCloseMenu();};
-$("anaNodeDelBtn").onclick=()=>{if(anaMenuEv!=null){delete anaMarks[anaMenuEv];anaRefreshNodes();anaTouch();}anaCloseMenu();};
+$("anaNodeMark").onclick=()=>{if(anaMenuEv!=null){anaMarks[anaMenuEv]=anaVideo.currentTime;anaRefreshNodes();anaTouch();}anaCloseMenu();};
+$("anaNodeDelBtn").onclick=()=>{if(anaMenuEv!=null){delete anaMarks[anaMenuEv];anaSel.delete(anaMenuEv);anaRefreshNodes();anaTouch();}anaCloseMenu();};
 $("anaNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
   const k=b.dataset.ev;
-  const wasLong=longPress(b,()=>{if(anaMarks[k]==null)return false;anaOpenMenu(k);});
-  b.onclick=()=>{if(wasLong())return;anaMarks[k]=anaVideo.currentTime;anaRefreshNodes();anaTouch();};
+  const wasLong=longPress(b,()=>{anaOpenMenu(k);});
+  b.onclick=()=>{if(wasLong())return;if(anaMarks[k]==null)return;if(anaSel.has(k))anaSel.delete(k);else{anaSel.add(k);anaSeekTo(k);}anaStopSeg();anaVideo.pause();anaRefreshNodes();};
 });
 holdRepeat($("prevFrameBtn"),()=>{anaVideo.pause();anaVideo.currentTime=Math.max(0,anaVideo.currentTime-stepSize);});
 holdRepeat($("nextFrameBtn"),()=>{anaVideo.pause();const n=anaVideo.currentTime+stepSize;anaVideo.currentTime=n>anaVideo.duration?anaVideo.duration:n;});
@@ -998,7 +1005,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   const JP=Object.fromEntries(EVENTS);
   const CMP_FULL_MS=3000;
   const vA=$("cmpVidA"),vB=$("cmpVidB");
-  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},ann:{A:[],B:[]},offset:{A:0,B:0},step:0.05,target:"A",view:"split",seg:null,drawOn:false,tool:"line",color:"#ef4444",sel:{side:null,idx:-1},dragHandle:null,lastN:{nx:0,ny:0},phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
+  const cmp={loaded:{A:false,B:false},src:{A:null,B:null},blob:{A:null,B:null},dur:{A:0,B:0},marks:{A:{},B:{}},ann:{A:[],B:[]},offset:{A:0,B:0},step:0.05,target:"A",view:"split",selSet:new Set(),drawOn:false,tool:"line",color:"#ef4444",sel:{side:null,idx:-1},dragHandle:null,lastN:{nx:0,ny:0},phase:0,playing:false,rate:1,raf:null,lastTs:0,ovl:{x:0,y:0,s:1}};
   vA.loop=true;vB.loop=true;
   const sideEl=s=>s==="B"?vB:vA;
   const isSync=()=>cmp.target==="sync";
@@ -1093,7 +1100,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   function removeSide(side){
     stopAll();
     if(cmp.src[side]){try{URL.revokeObjectURL(cmp.src[side]);}catch(e){}}
-    cmp.loaded[side]=false;cmp.src[side]=null;cmp.blob[side]=null;cmp.dur[side]=0;cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;cmp.seg=null;
+    cmp.loaded[side]=false;cmp.src[side]=null;cmp.blob[side]=null;cmp.dur[side]=0;cmp.marks[side]={};cmp.ann[side]=[];cmp.offset[side]=0;cmp.selSet.clear();
     const v=sideEl(side);v.removeAttribute("src");v.load();
     idbDel(side==="A"?"vidA":"vidB");saveMeta();
     resetZoom(side);clearLoadError(side);refreshCells();refreshAll();
@@ -1118,19 +1125,30 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- 同期再生（rAFでフェーズを進め両動画をシーク）----
   function setPlayBtn(on){$("cmpPlay").textContent=on?"⏸":"▶";}
-  // 選択中の節目 → 前後の節目までの区間（フェーズ範囲）
+  const inOrder=arr=>EVENTS.map(([k])=>k).filter(k=>arr.includes(k));
+  function selSync(){const act=activeEvents();return inOrder([...cmp.selSet]).filter(k=>act.includes(k));}
+  function selSingle(){const side=cmp.target;return inOrder([...cmp.selSet]).filter(k=>cmp.marks[side][k]!=null);}
+  // 同期モード：選択からフェーズ範囲。単一選択は前後1区間、複数は端〜端
   function segRange(){
-    if(!cmp.seg)return null;
-    const act=activeEvents();const i=act.indexOf(cmp.seg);
-    if(i<0||act.length<2)return null;
-    const n=act.length-1;
-    return[Math.max(0,i-1)/n,Math.min(n,i+1)/n];
+    const act=activeEvents();if(act.length<2)return null;
+    const sel=selSync();if(!sel.length)return null;
+    const n=act.length-1,idxs=sel.map(k=>act.indexOf(k)).sort((a,b)=>a-b);
+    if(sel.length>=2)return[idxs[0]/n,idxs[idxs.length-1]/n];
+    const i=idxs[0];return[Math.max(0,i-1)/n,Math.min(n,i+1)/n];
   }
-  function segLabel(){
-    const act=activeEvents();const i=act.indexOf(cmp.seg);
-    if(i<0||act.length<2)return null;
-    const n=act.length-1;
-    return JP[act[Math.max(0,i-1)]]+"→"+JP[act[Math.min(n,i+1)]];
+  // 単一動画モード：選択から秒範囲
+  function rangeSingle(){
+    const side=cmp.target,sel=selSingle();if(!sel.length)return null;
+    if(sel.length>=2){const ts=sel.map(k=>cmp.marks[side][k]).sort((a,b)=>a-b);return[ts[0],ts[ts.length-1]];}
+    const list=sideNodes(side),i=list.indexOf(sel[0]);
+    const t0=cmp.marks[side][list[Math.max(0,i-1)]],t1=cmp.marks[side][list[Math.min(list.length-1,i+1)]];
+    return(t1>t0)?[Math.min(t0,t1),Math.max(t0,t1)]:null;
+  }
+  function rangeLabel(){
+    if(isSync()){const r=segRange();if(!r)return null;const act=activeEvents(),n=act.length-1;return JP[act[Math.round(r[0]*n)]]+"〜"+JP[act[Math.round(r[1]*n)]];}
+    const r=rangeSingle();if(!r)return null;const side=cmp.target,list=sideNodes(side);
+    const near=t=>list.reduce((b,k)=>Math.abs(cmp.marks[side][k]-t)<Math.abs(cmp.marks[side][b]-t)?k:b,list[0]);
+    return JP[near(r[0])]+"〜"+JP[near(r[1])];
   }
   function playLoop(ts){if(!cmp.playing)return;cmp.raf=requestAnimationFrame(playLoop);if(!cmp.lastTs){cmp.lastTs=ts;return;}const dt=ts-cmp.lastTs;cmp.lastTs=ts;cmp.phase+=cmp.rate*(dt/CMP_FULL_MS);const r=segRange();if(r){if(cmp.phase>=r[1])cmp.phase=r[0];applyPhase();return;}if(cmp.phase>=1)cmp.phase=0;applyPhase();}
   function startSync(){if(cmp.playing||!(cmp.loaded.A&&cmp.loaded.B))return;const r=segRange();if(r)cmp.phase=r[0];else if(cmp.phase>=0.999)cmp.phase=0;cmp.playing=true;cmp.lastTs=0;setPlayBtn(true);cmp.raf=requestAnimationFrame(playLoop);}
@@ -1139,19 +1157,14 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   let sideLoop=null;
   function stopSideLoop(){if(sideLoop){clearInterval(sideLoop);sideLoop=null;}}
   function sideNodes(side){return EVENTS.map(([k])=>k).filter(k=>cmp.marks[side][k]!=null);}
-  function playSideSegment(side,k){
-    const list=sideNodes(side),i=list.indexOf(k);
-    if(i<0||list.length<2)return;
-    const t0=cmp.marks[side][list[Math.max(0,i-1)]],t1=cmp.marks[side][list[Math.min(list.length-1,i+1)]];
-    if(!(t1>t0))return;
-    const v=sideEl(side);stopSideLoop();
-    v.playbackRate=Math.max(0.25,cmp.rate);setTime(v,t0);
-    const p=v.play();if(p&&p.catch)p.catch(()=>{});
-    setPlayBtn(true);
-    sideLoop=setInterval(()=>{
-      if(v.paused){stopSideLoop();setPlayBtn(false);return;}
-      if(v.currentTime>=t1-0.005){try{v.currentTime=t0;}catch(e){}}
-    },40);
+  function playSingle(){
+    const v=curV(),r=rangeSingle();stopSideLoop();
+    v.playbackRate=Math.max(0.25,cmp.rate);
+    if(r){
+      if(v.currentTime<r[0]-0.02||v.currentTime>=r[1]-0.005)setTime(v,r[0]);
+      sideLoop=setInterval(()=>{if(v.paused){stopSideLoop();setPlayBtn(false);return;}if(v.currentTime>=r[1]-0.005){try{v.currentTime=r[0];}catch(e){}}},40);
+    }
+    const p=v.play();if(p&&p.catch)p.catch(()=>{});setPlayBtn(true);
   }
   function stopAll(){stopSync();stopSideLoop();vA.pause();vB.pause();setPlayBtn(false);}
 
@@ -1160,7 +1173,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     if(!isSync()&&!cmp.loaded[cmp.target])return;
     if(isSync()&&!(cmp.loaded.A&&cmp.loaded.B))return;
     if(isSync()){cmp.playing?stopSync():startSync();}
-    else{const v=curV();if(v.paused){v.playbackRate=Math.max(0.25,cmp.rate);const p=v.play();if(p&&p.catch)p.catch(()=>{});setPlayBtn(true);}else{v.pause();setPlayBtn(false);}}
+    else{const v=curV();if(!v.paused||sideLoop){v.pause();stopSideLoop();setPlayBtn(false);}else playSingle();}
   }
   $("cmpPlay").onclick=togglePlay;
   $("cmpSeek").oninput=e=>{if(!isSync()&&!cmp.loaded[cmp.target])return;const val=parseInt(e.target.value)/1000;
@@ -1182,14 +1195,19 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     v.addEventListener("ended",()=>{if(!isSync()&&curV()===v)setPlayBtn(false);});
   });
 
-  // ---- 節目ボタン（自分/お手本＝マーク、同期＝ジャンプ）----
+  // ---- 節目ボタン：タップ=選択トグル（+その静止画へ）、長押し=マーク/削除メニュー ----
+  function nodeMarked(k){return isSync()?(cmp.marks.A[k]!=null&&cmp.marks.B[k]!=null):(cmp.marks[cmp.target][k]!=null);}
+  function seekToNode(k){
+    if(isSync()){const act=activeEvents(),i=act.indexOf(k);if(i>=0){stopSync();cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();}}
+    else{const t=cmp.marks[cmp.target][k];if(t!=null){const v=curV();stopSideLoop();v.pause();setTime(v,t);updateTransportUI();}}
+  }
   $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
     const k=b.dataset.ev;
     let hold=null,fired=false,sx=0,sy=0;
     const cancelHold=()=>{if(hold){clearTimeout(hold);hold=null;}};
     b.addEventListener("pointerdown",e=>{
       fired=false;cancelHold();
-      if(isSync()||cmp.marks[cmp.target][k]==null)return;
+      if(isSync())return;               // マーク編集は自分/お手本モードのみ
       sx=e.clientX;sy=e.clientY;
       hold=setTimeout(()=>{hold=null;fired=true;openNodeMenu(k);},450);
     });
@@ -1199,26 +1217,52 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     b.addEventListener("pointercancel",()=>{cancelHold();fired=false;});
     b.onclick=()=>{
       if(fired){fired=false;return;}
-      if(isSync()){const act=activeEvents();const i=act.indexOf(k);if(i<0)return;stopSync();cmp.seg=(cmp.seg===k)?null:k;cmp.phase=act.length>1?i/(act.length-1):0;applyPhase();refreshNodes();}
-      else{cmp.marks[cmp.target][k]=curV().currentTime;refreshNodes();saveMeta();}
+      if(!nodeMarked(k))return;         // 未マークはタップ無反応（長押しでマーク）
+      if(cmp.selSet.has(k))cmp.selSet.delete(k);
+      else{cmp.selSet.add(k);seekToNode(k);}
+      stopAll();refreshNodes();
     };
   });
-  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};refreshNodes();saveMeta();};
+  $("cmpClearMarks").onclick=()=>{cmp.marks[cmp.target]={};[...cmp.selSet].forEach(k=>cmp.selSet.delete(k));refreshNodes();saveMeta();};
 
-  // ---- 節目ごとの移動/削除 ----
+  // ---- 選択バー（範囲チップ＋節目送り）----
+  function selAnchors(){
+    if(isSync()){const act=activeEvents(),n=(act.length-1)||1;return selSync().map(k=>act.indexOf(k)/n).sort((a,b)=>a-b);}
+    const side=cmp.target;return selSingle().map(k=>cmp.marks[side][k]).sort((a,b)=>a-b);
+  }
+  function nodeJog(dir){
+    const a=selAnchors();if(a.length<2)return;stopAll();
+    const cur=isSync()?cmp.phase:curV().currentTime;let idx;
+    if(dir>0){idx=a.findIndex(x=>x>cur+1e-4);if(idx<0)idx=a.length-1;}
+    else{idx=0;for(let j=a.length-1;j>=0;j--){if(a[j]<cur-1e-4){idx=j;break;}}}
+    const t=a[Math.max(0,Math.min(a.length-1,idx))];
+    if(isSync()){cmp.phase=t;applyPhase();}else{const v=curV();v.pause();setTime(v,t);updateTransportUI();}
+  }
+  function updateSelBar(){
+    const size=cmp.selSet.size,jog=size>=2?"flex":"none";
+    $("cmpSelBar").style.display=size?"flex":"none";
+    $("cmpJogPrev").style.display=jog;$("cmpJogNext").style.display=jog;
+    const lbl=rangeLabel();
+    $("cmpSegChip").textContent=(lbl?"区間: "+lbl:"選択中")+" ✕";
+  }
+  $("cmpSegChip").onclick=()=>{[...cmp.selSet].forEach(k=>cmp.selSet.delete(k));stopAll();refreshNodes();};
+  $("cmpJogPrev").onclick=()=>nodeJog(-1);
+  $("cmpJogNext").onclick=()=>nodeJog(1);
+
+  // ---- 節目メニュー：マーク/削除 ----
   let menuEv=null;
   function openNodeMenu(k){
-    menuEv=k;
-    $("cmpNodeMenuTitle").textContent=(cmp.target==="A"?"自分":"お手本")+"・"+JP[k]+"  "+fmtTime(cmp.marks[cmp.target][k]);
-    $("cmpNodePlay").disabled=sideNodes(cmp.target).length<2;
+    menuEv=k;const marked=cmp.marks[cmp.target][k]!=null;
+    $("cmpNodeMenuTitle").textContent=(cmp.target==="A"?"自分":"お手本")+"・"+JP[k]+(marked?"  "+fmtTime(cmp.marks[cmp.target][k]):"（未マーク）");
+    $("cmpNodeMark").textContent=marked?"この位置にマークし直す":"この位置にマーク";
+    $("cmpNodeDel").style.display=marked?"flex":"none";
     $("cmpNodeMenu").classList.remove("hidden");
   }
   function closeNodeMenu(){$("cmpNodeMenu").classList.add("hidden");menuEv=null;}
   $("cmpNodeMenuClose").onclick=closeNodeMenu;
   $("cmpNodeMenu").addEventListener("click",e=>{if(e.target===$("cmpNodeMenu"))closeNodeMenu();});
-  $("cmpNodePlay").onclick=()=>{const k=menuEv;closeNodeMenu();if(k!=null)playSideSegment(cmp.target,k);};
-  $("cmpNodeGo").onclick=()=>{if(menuEv!=null){const t=cmp.marks[cmp.target][menuEv];if(t!=null){const v=curV();v.pause();setPlayBtn(false);setTime(v,t);updateTransportUI();}}closeNodeMenu();};
-  $("cmpNodeDel").onclick=()=>{if(menuEv!=null){delete cmp.marks[cmp.target][menuEv];refreshNodes();saveMeta();}closeNodeMenu();};
+  $("cmpNodeMark").onclick=()=>{if(menuEv!=null){cmp.marks[cmp.target][menuEv]=curV().currentTime;refreshNodes();saveMeta();}closeNodeMenu();};
+  $("cmpNodeDel").onclick=()=>{if(menuEv!=null){delete cmp.marks[cmp.target][menuEv];cmp.selSet.delete(menuEv);refreshNodes();saveMeta();}closeNodeMenu();};
 
   // ---- 表示ラベル ----
   function phaseLabel(){
@@ -1242,7 +1286,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 
   // ---- 対象切替（自分/お手本/同期）----
   function setTarget(t){
-    cmp.target=t;stopAll();
+    cmp.target=t;stopAll();cmp.selSet.clear();
     document.querySelectorAll("#cmpTarget button").forEach(x=>x.classList.toggle("active",x.dataset.tgt===t));
     const sync=t==="sync";
     $("cmpSyncSub").style.display=sync?"flex":"none";
@@ -1285,7 +1329,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   // ---- リフレッシュ ----
   function refreshNodes(){
     const sync=isSync();
-    if(cmp.seg&&activeEvents().indexOf(cmp.seg)<0)cmp.seg=null;
+    [...cmp.selSet].forEach(k=>{if(!nodeMarked(k))cmp.selSet.delete(k);});
     $("cmpNodeRow").querySelectorAll(".cmp-node").forEach(b=>{
       const k=b.dataset.ev,am=cmp.marks.A[k]!=null,bm=cmp.marks.B[k]!=null;
       b.querySelector(".a").classList.toggle("on",am);
@@ -1293,18 +1337,12 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
       const mine=!sync&&(cmp.target==="A"?am:bm);
       b.classList.toggle("marked",mine);
       b.classList.toggle("showtime",mine);
-      b.classList.toggle("armed",sync&&cmp.seg===k);
+      b.classList.toggle("armed",cmp.selSet.has(k));
       if(mine)b.querySelector(".mt").textContent=fmtTime(cmp.marks[cmp.target][k]);
       b.disabled=sync&&!(am&&bm);
     });
-    updateSegChip();
+    updateSelBar();
   }
-  function updateSegChip(){
-    const el=$("cmpSegChip"),lbl=cmp.seg?segLabel():null;
-    if(lbl){el.textContent="区間: "+lbl+" ✕";el.disabled=false;el.classList.add("on");}
-    else{el.textContent="再生範囲: 全体";el.disabled=true;el.classList.remove("on");}
-  }
-  $("cmpSegChip").onclick=()=>{stopSync();cmp.seg=null;refreshNodes();};
   function refreshAll(){refreshNodes();updateNudgeUI();updateTransportUI();}
 
   // ---- 動画変更 ----
