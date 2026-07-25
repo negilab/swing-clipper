@@ -356,7 +356,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.6</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.7</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -813,7 +813,9 @@ $("fsSeek").oninput=()=>{if(!isNaN(anaVideo.duration))anaVideo.currentTime=(pars
 $("fsPlayBtn").onclick=anaTogglePlay;
 anaVideo.onplay=()=>{$("anaPlayBtn").textContent="⏸";$("fsPlayBtn").textContent="⏸";};
 anaVideo.onpause=anaVideo.onended=()=>{$("anaPlayBtn").textContent="▶";$("fsPlayBtn").textContent="▶";};
-document.querySelectorAll("[data-fs-rate]").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.fsRate);document.querySelectorAll("[data-fs-rate]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("[data-rate]").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.rate)===parseFloat(b.dataset.fsRate)));};});
+function anaRateOf(el){return parseFloat(el.dataset.rate!=null?el.dataset.rate:el.dataset.fsRate);}
+function setAnaRate(r){if(isNaN(r))return;anaVideo.playbackRate=r;document.querySelectorAll("[data-rate],[data-fs-rate]").forEach(x=>x.classList.toggle("active",anaRateOf(x)===r));}
+document.querySelectorAll("[data-rate],[data-fs-rate]").forEach(b=>{b.onclick=()=>setAnaRate(anaRateOf(b));});
 // 全画面 描画ツール（通常ツールと同期）
 document.querySelectorAll(".fs-tool").forEach(b=>{b.onclick=()=>{ana.tool=b.dataset.tool;document.querySelectorAll(".fs-tool").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".tool-btn:not(.fs-tool)").forEach(x=>x.classList.toggle("active",x.dataset.tool===ana.tool));};});
 document.querySelectorAll(".fs-color").forEach(d=>{d.onclick=()=>{ana.color=d.dataset.color;document.querySelectorAll(".fs-color").forEach(x=>x.classList.toggle("active",x===d));document.querySelectorAll(".color-dot:not(.fs-color)").forEach(x=>x.classList.toggle("active",x.dataset.color===ana.color));};});
@@ -969,7 +971,7 @@ $("clearAllBtn").onclick=()=>{if(confirm("アノテーションと軌跡をす�
 // ---- 再生 ----
 $("anaPlayBtn").onclick=anaTogglePlay;
 $("anaSeek").oninput=()=>{anaStopSeg();if(!isNaN(anaVideo.duration))anaVideo.currentTime=(parseInt($("anaSeek").value)/1000)*anaVideo.duration;};
-document.querySelectorAll(".speed-btn").forEach(b=>{b.onclick=()=>{anaVideo.playbackRate=parseFloat(b.dataset.rate);document.querySelectorAll(".speed-btn").forEach(x=>x.classList.toggle("active",x===b));};});
+
 document.querySelectorAll("[data-step]").forEach(b=>{b.onclick=()=>{stepSize=parseFloat(b.dataset.step);document.querySelectorAll("[data-step]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".fs-step").forEach(x=>x.classList.toggle("active",parseFloat(x.dataset.fsStep)===stepSize));};});
 // 長押ししている間コマ送りを連続実行（押した瞬間に1回→少し待って加速リピート）
 function holdRepeat(el,fn){
@@ -999,7 +1001,7 @@ function anaRangeLabel(){const r=anaRange();if(!r)return null;const list=anaNode
 function anaUpdateSelBar(){const size=anaSel.size,jog=size>=2?"flex":"none";$("anaSelBar").style.display=size?"flex":"none";$("anaJogPrev").style.display=jog;$("anaJogNext").style.display=jog;const lbl=anaRangeLabel();$("anaSegChip").textContent=(lbl?"区間: "+lbl:"選択中")+" ✕";}
 function anaAnchors(){return anaNodeList().filter(k=>anaSel.has(k)).map(k=>anaMarks[k]).sort((a,b)=>a-b);}
 function anaJog(dir){const a=anaAnchors();if(a.length<2)return;anaStopSeg();anaVideo.pause();const cur=anaVideo.currentTime;let idx;if(dir>0){idx=a.findIndex(x=>x>cur+1e-4);if(idx<0)idx=a.length-1;}else{idx=0;for(let j=a.length-1;j>=0;j--){if(a[j]<cur-1e-4){idx=j;break;}}}try{anaVideo.currentTime=a[Math.max(0,Math.min(a.length-1,idx))];}catch(e){}}
-function anaPlayRange(){const r=anaRange();anaStopSeg();if(r){if(anaVideo.currentTime<r[0]-0.02||anaVideo.currentTime>=r[1]-0.005){try{anaVideo.currentTime=r[0];}catch(e){}}anaSegLoop=setInterval(()=>{if(anaVideo.paused){anaStopSeg();return;}if(anaVideo.currentTime>=r[1]-0.005){try{anaVideo.currentTime=r[0];}catch(e){}}},40);}const p=anaVideo.play();if(p&&p.catch)p.catch(()=>{});}
+function anaPlayRange(){const r=anaRange();anaStopSeg();const _ra=document.querySelector("[data-rate].active,[data-fs-rate].active");if(_ra){const rr=anaRateOf(_ra);if(!isNaN(rr))anaVideo.playbackRate=rr;}if(r){if(anaVideo.currentTime<r[0]-0.02||anaVideo.currentTime>=r[1]-0.005){try{anaVideo.currentTime=r[0];}catch(e){}}anaSegLoop=setInterval(()=>{if(anaVideo.paused){anaStopSeg();return;}if(anaVideo.currentTime>=r[1]-0.005){try{anaVideo.currentTime=r[0];}catch(e){}}},40);}const p=anaVideo.play();if(p&&p.catch)p.catch(()=>{});}
 function anaTogglePlay(){if(!anaVideo.paused||anaSegLoop){anaVideo.pause();anaStopSeg();}else anaPlayRange();}
 function anaSeekTo(k){const t=anaMarks[k];if(t!=null){anaStopSeg();anaVideo.pause();try{anaVideo.currentTime=t;}catch(e){}}}
 $("anaSegChip").onclick=()=>{anaSel.clear();anaStopSeg();anaVideo.pause();anaRefreshNodes();};
