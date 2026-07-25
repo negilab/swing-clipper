@@ -317,6 +317,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .ana-trace-row #anaTrajClear{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
 .ana-trace-row .ana-tgl{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
 .ana-trace-row .ana-tgl.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.ana-trace-row #anaShaftBtn{flex:0 0 auto;padding:9px 13px;font-size:12px;border-radius:10px;background:rgba(90,200,255,.16);color:#5ac8ff;border-color:rgba(90,200,255,.4);}
 .ana-trace-prog{font-size:11px;color:var(--muted);flex:1;min-width:120px;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
@@ -458,7 +459,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
     <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.05">1/20s</button><button class="step-btn" data-step="0.02">1/50s</button><button class="step-btn" data-step="0.01">1/100s</button><button class="step-btn" data-step="0.005">1/200s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
     <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><div class="cmp-selbar" id="anaSelBar" style="display:none"><button class="cmp-jog" id="anaJogPrev">◀</button><button class="cmp-segchip on" id="anaSegChip">選択中 ✕</button><button class="cmp-jog" id="anaJogNext">▶</button></div><span class="cmp-sub-hint">節目=タップで選択（再生範囲/静止画送り）・長押しでマーク/削除</span></div>
-    <div class="ana-trace-row"><button id="anaTraceBtn">🦴 骨格＋軌跡を解析</button><button id="anaSkelTgl" class="ana-tgl on">骨格</button><button id="anaGuideTgl" class="ana-tgl on">基準線・角度</button><button id="anaTrajClear">消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
+    <div class="ana-trace-row"><button id="anaTraceBtn">🦴 骨格＋軌跡を解析</button><button id="anaSkelTgl" class="ana-tgl on">骨格</button><button id="anaGuideTgl" class="ana-tgl on">基準線・角度</button><button id="anaShaftBtn">🏒 シャフト自動</button><button id="anaTrajClear">消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
     <div class="ios-note hidden" id="iosNote">⚠ iOSは再生速度1/5以下が下限になる場合あり。1/50s・1/100s送りはスロー撮影動画(120/240fps)で有効です</div>
   </div>
   <div class="ana-tools hidden" id="anaTools">
@@ -646,7 +647,7 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 // ===== 分析タブ =====
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
-const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],pose:null,showSkel:true,showGuides:true,drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
+const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],pose:null,shaft:null,showSkel:true,showGuides:true,drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
 // ---- 端末内保存（IndexedDB）----
 const DBN="swingclipper_lab",ST="cmp";
 function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DBN,1);}catch(e){return rej(e);}r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
@@ -754,6 +755,14 @@ function startAnaRaf(){
           }
         }
       }
+    }
+    if(ana.shaft&&ana.shaft.length){
+      const Tt=anaVideo.currentTime;const seg=ana.shaft.filter(r=>r.hx!=null&&r.t<=Tt+0.001);
+      ctx.lineCap="round";ctx.lineJoin="round";
+      for(let i=1;i<seg.length;i++){const al=Math.max(0.06,1-(Tt-seg[i].t)/0.9);const A=normToBase(seg[i-1].hx,seg[i-1].hy),B=normToBase(seg[i].hx,seg[i].hy);ctx.strokeStyle="rgba(90,200,255,"+al+")";ctx.lineWidth=4;ctx.shadowColor="rgba(90,200,255,0.9)";ctx.shadowBlur=9;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();}
+      ctx.shadowBlur=0;
+      let cur=null;for(const r of ana.shaft){if(r.hx!=null&&r.t<=Tt+0.001)cur=r;}
+      if(cur){const G=normToBase(cur.gx,cur.gy),Hd=normToBase(cur.hx,cur.hy);ctx.strokeStyle="rgba(255,255,255,0.95)";ctx.lineWidth=2.5;ctx.shadowColor="rgba(90,200,255,0.85)";ctx.shadowBlur=7;ctx.beginPath();ctx.moveTo(G.x,G.y);ctx.lineTo(Hd.x,Hd.y);ctx.stroke();ctx.shadowBlur=0;}
     }
     for(let i=0;i<ana.annotations.length;i++){const a=ana.annotations[i];ctx.strokeStyle=a.color;ctx.lineWidth=i===ana.selectedIdx?1.2:0.85;ctx.lineCap="round";ctx.shadowColor=a.color;ctx.shadowBlur=1;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);const b=getVideoBaseRect();ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=0;}
     if(ana.selectedIdx>=0&&ana.selectedIdx<ana.annotations.length){const a=ana.annotations[ana.selectedIdx],b=getVideoBaseRect();ctx.setLineDash([5,4]);ctx.strokeStyle=a.color;ctx.lineWidth=0.8;if(a.type==="line"){const{x:x1,y:y1}=normToBase(a.nx1,a.ny1);const{x:x2,y:y2}=normToBase(a.nx2,a.ny2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}else if(a.type==="circle"){const{x:cx,y:cy}=normToBase(a.ncx,a.ncy);ctx.beginPath();ctx.arc(cx,cy,Math.max(1,a.nr*b.width),0,Math.PI*2);ctx.stroke();}ctx.setLineDash([]);const handles=a.type==="line"?[{nx:a.nx1,ny:a.ny1},{nx:a.nx2,ny:a.ny2}]:[{nx:a.ncx,ny:a.ncy},{nx:a.ncx+a.nr,ny:a.ncy}];for(const h of handles){const{x,y}=normToBase(h.nx,h.ny);ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle=a.color;ctx.lineWidth=1;ctx.stroke();}}
@@ -1731,7 +1740,22 @@ $("anaTraceBtn").onclick=async()=>{
 };
 $("anaSkelTgl").onclick=()=>{ana.showSkel=!ana.showSkel;updateOverlayTgl();anaTouch();};
 $("anaGuideTgl").onclick=()=>{ana.showGuides=!ana.showGuides;updateOverlayTgl();anaTouch();};
-$("anaTrajClear").onclick=()=>{ana.trackPoints=[];ana.pose=null;$("anaTraceProg").textContent="";anaTouch();};
+$("anaShaftBtn").onclick=async()=>{
+  if(anaTracing)return;
+  if(!window.SC_analyzeShaft){$("anaTraceProg").textContent="読み込めていません（通信環境をご確認ください）";return;}
+  if(isNaN(anaVideo.duration)||anaVideo.duration<=0){$("anaTraceProg").textContent="先に動画を読み込んでください";return;}
+  anaTracing=true;const btn=$("anaShaftBtn"),prog=$("anaTraceProg");btn.disabled=true;prog.textContent="準備中…（初回はモデル取得で数秒）";
+  const keepT=anaVideo.currentTime;anaVideo.pause();anaStopSeg();
+  try{
+    let t0=0,t1=anaVideo.duration;const r=anaRange();if(r){t0=r[0];t1=r[1];}
+    const frames=await window.SC_analyzeShaft(anaVideo,t0,t1,1/30,(pr)=>{prog.textContent="シャフト解析中 "+Math.round(pr*100)+"%";});
+    ana.shaft=frames;const good=frames.filter(f=>f.hx!=null);
+    prog.textContent="完了：シャフト "+good.length+"／"+frames.length+"フレーム（自動・要確認）";anaTouch();
+  }catch(e){prog.textContent="エラー："+((e&&e.message)||e);}
+  try{anaVideo.currentTime=keepT;}catch(e){}
+  btn.disabled=false;anaTracing=false;
+};
+$("anaTrajClear").onclick=()=>{ana.trackPoints=[];ana.pose=null;ana.shaft=null;$("anaTraceProg").textContent="";anaTouch();};
 
 // ---- 起動 ----
 restoreClips();
@@ -1771,6 +1795,55 @@ window.SC_analyzePose=async function(video,t0,t1,step,onProgress){
     if(onProgress)onProgress((i+1)/(n+1));
   }
   return frames;
+};
+function _sobelMag(octx,w,h){
+  const d=octx.getImageData(0,0,w,h).data;const g=new Float32Array(w*h);
+  for(let i=0,j=0;i<w*h;i++,j+=4)g[i]=0.299*d[j]+0.587*d[j+1]+0.114*d[j+2];
+  const m=new Float32Array(w*h);
+  for(let y=1;y<h-1;y++){const yw=y*w;for(let x=1;x<w-1;x++){const i=yw+x;
+    const gx=-g[i-w-1]-2*g[i-1]-g[i+w-1]+g[i-w+1]+2*g[i+1]+g[i+w+1];
+    const gy=-g[i-w-1]-2*g[i-w]-g[i-w+1]+g[i+w-1]+2*g[i+w]+g[i+w+1];
+    m[i]=Math.abs(gx)+Math.abs(gy);}}
+  return m;
+}
+function _thr(m){let s=0,s2=0,c=0;for(let i=0;i<m.length;i+=7){s+=m[i];s2+=m[i]*m[i];c++;}const mean=s/c,sd=Math.sqrt(Math.max(0,s2/c-mean*mean));return mean+2.2*sd;}
+function _findShaft(m,w,h,gx,gy,prevAng,thr){
+  const maxLen=Math.hypot(w,h)*0.6;let bestAng=prevAng==null?0:prevAng,bestScore=-1,bestReach=0;
+  const lo=prevAng==null?0:prevAng-55,hi=prevAng==null?358:prevAng+55,st=prevAng==null?3:2;
+  for(let deg=lo;deg<=hi;deg+=st){
+    const a=deg*Math.PI/180,dx=Math.cos(a),dy=Math.sin(a),nx=-dy,ny=dx;
+    let gap=0,reach=0,hits=0;
+    for(let r=10;r<maxLen;r+=2){
+      const px=gx+dx*r,py=gy+dy*r;if(px<1||py<1||px>=w-1||py>=h-1)break;
+      let hit=false;for(let o=-2;o<=2;o++){const sx=(px+nx*o)|0,sy=(py+ny*o)|0;if(sx>0&&sy>0&&sx<w&&sy<h&&m[sy*w+sx]>thr){hit=true;break;}}
+      if(hit){reach=r;hits++;gap=0;}else{gap+=2;if(gap>20)break;}
+    }
+    if(hits>bestScore){bestScore=hits;bestAng=deg;bestReach=reach;}
+  }
+  return {ang:bestAng,reach:bestReach,score:bestScore};
+}
+window.SC_analyzeShaft=async function(video,t0,t1,step,onProgress){
+  const lm=await ensureLM();
+  const off=document.createElement("canvas"),octx=off.getContext("2d",{willReadFrequently:true});
+  const span=Math.max(0.001,t1-t0),n=Math.min(200,Math.max(4,Math.round(span/step))),dt=span/n;
+  const out=[];let prevAng=null;
+  for(let i=0;i<=n;i++){
+    const t=Math.min(t1,t0+i*dt);await seekTo(video,t);
+    const w=video.videoWidth||0,h=video.videoHeight||0;const rec={t};
+    if(w&&h){
+      if(off.width!==w)off.width=w;if(off.height!==h)off.height=h;
+      octx.drawImage(video,0,0,w,h);
+      let res=null;try{res=lm.detect(off);}catch(e){}
+      const L=res&&res.landmarks&&res.landmarks[0];
+      if(L&&L[15]&&L[16]){
+        const gx=(L[15].x+L[16].x)/2,gy=(L[15].y+L[16].y)/2;rec.gx=gx;rec.gy=gy;
+        const m=_sobelMag(octx,w,h),thr=_thr(m),sh=_findShaft(m,w,h,gx*w,gy*h,prevAng,thr);
+        if(sh.reach>Math.min(w,h)*0.12){prevAng=sh.ang;const a=sh.ang*Math.PI/180;rec.hx=(gx*w+Math.cos(a)*sh.reach)/w;rec.hy=(gy*h+Math.sin(a)*sh.reach)/h;rec.conf=sh.score;}
+      }
+    }
+    out.push(rec);if(onProgress)onProgress((i+1)/(n+1));
+  }
+  return out;
 };
 window.SC_poseAvailable=true;
 </script>
