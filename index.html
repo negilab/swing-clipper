@@ -356,7 +356,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.5</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.6</span></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -780,7 +780,7 @@ async function restoreAna(){
   if(anaRestored||anaBlob)return;anaRestored=true;
   const b=await idbGet("anaVid");if(!b)return;
   const meta=await idbGet("anaMeta");
-  if(meta){if(meta.marks)Object.keys(meta.marks).forEach(k=>anaMarks[k]=meta.marks[k]);if(meta.annotations)ana.annotations=meta.annotations;if(meta.trackPoints)ana.trackPoints=meta.trackPoints;if(meta.pose)ana.pose=meta.pose;if(meta.showSkel!=null)ana.showSkel=meta.showSkel;if(meta.showGuides!=null)ana.showGuides=meta.showGuides;updateOverlayTgl();}
+  if(meta){if(meta.marks)Object.keys(meta.marks).forEach(k=>anaMarks[k]=meta.marks[k]);if(meta.annotations)ana.annotations=meta.annotations;if(meta.pose)ana.pose=meta.pose;if(meta.trackPoints)ana.trackPoints=meta.trackPoints;if(ana.pose)ana.trackPoints=wristTrajFromPose(ana.pose);if(meta.showSkel!=null)ana.showSkel=meta.showSkel;if(meta.showGuides!=null)ana.showGuides=meta.showGuides;updateOverlayTgl();}
   anaBlob=b;loadAnaSource(URL.createObjectURL(b),true);
 }
 function loadAnaBlob(blob){anaBlob=blob;anaRestored=true;idbSet("anaVid",blob);loadAnaSource(URL.createObjectURL(blob));}
@@ -1679,16 +1679,29 @@ document.querySelectorAll('.tab-btn[data-tab="ana"]').forEach(b=>b.addEventListe
 const POSE_BONES=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[27,31],[24,26],[26,28],[28,32]];
 const POSE_JOINTS=[0,11,12,13,14,15,16,23,24,25,26,27,28];
 function drawLabel(ctx,x,y,text,color){ctx.save();ctx.font="600 12px Inter,system-ui,sans-serif";ctx.textBaseline="alphabetic";const w=ctx.measureText(text).width;ctx.fillStyle="rgba(8,12,10,0.74)";ctx.fillRect(x-3,y-13,w+6,17);ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.restore();}
-// 検出点の外れ値除去＋平滑化（メディアン→移動平均）。スイングの形は保ち、単発の飛びだけ消す
-function smoothTraj(pts){
-  if(!pts||pts.length<5)return pts||[];
-  const p=pts.slice().sort((a,b)=>a.t-b.t);
-  const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s[s.length>>1];};
-  const medfilt=(v,k)=>{const h=k>>1;return v.map((_,i)=>{const w=[];for(let j=Math.max(0,i-h);j<=Math.min(v.length-1,i+h);j++)w.push(v[j]);return med(w);});};
-  const ma=(v,w)=>v.map((_,i)=>{let s=0,c=0;for(let j=Math.max(0,i-w);j<=Math.min(v.length-1,i+w);j++){s+=v[j];c++;}return s/c;});
-  let xs=medfilt(p.map(o=>o.nx),5), ys=medfilt(p.map(o=>o.ny),5);
-  xs=ma(xs,1); ys=ma(ys,1);
-  return p.map((o,i)=>({t:o.t,nx:xs[i],ny:ys[i]}));
+// 外れ値(単発の飛び)だけをピンポイント補正。良い点は生のまま＝手首に貼りつく（全体平均でズラさない）
+function cleanTraj(pts){
+  if(!pts||pts.length<3)return pts||[];
+  const p=pts.slice().sort((a,b)=>a.t-b.t).map(o=>({t:o.t,nx:o.nx,ny:o.ny}));
+  const steps=[];for(let i=1;i<p.length;i++)steps.push(Math.hypot(p[i].nx-p[i-1].nx,p[i].ny-p[i-1].ny));
+  const ms=steps.slice().sort((a,b)=>a-b)[steps.length>>1]||0.01;
+  const thr=Math.max(0.05,ms*3.5);
+  const orig=p.map(o=>({nx:o.nx,ny:o.ny}));
+  for(let i=1;i<p.length-1;i++){
+    const a=orig[i-1],b=orig[i+1],c=orig[i];
+    const mx=(a.nx+b.nx)/2,my=(a.ny+b.ny)/2;
+    const dev=Math.hypot(c.nx-mx,c.ny-my);          // 近傍中点からのズレ
+    const neigh=Math.hypot(b.nx-a.nx,b.ny-a.ny);    // 近傍同士の距離
+    if(dev>thr&&neigh<thr*2){p[i].nx=mx;p[i].ny=my;} // 近傍が揃っていて自分だけ飛んでる時だけ補正
+  }
+  return p;
+}
+// 骨格フレーム群 → 手首中点の軌跡（骨格と同一ソースなので必ず一致）
+function wristTrajFromPose(frames){
+  if(!frames)return [];
+  const wr=frames.filter(f=>f.lm&&f.lm[15]&&f.lm[16]&&Math.min(f.lm[15].v||1,f.lm[16].v||1)>0.3)
+    .map(f=>({t:f.t,nx:(f.lm[15].x+f.lm[16].x)/2,ny:(f.lm[15].y+f.lm[16].y)/2}));
+  return cleanTraj(wr);
 }
 let anaTracing=false;
 function updateOverlayTgl(){const a=$("anaSkelTgl"),g=$("anaGuideTgl");if(a)a.classList.toggle("on",!!ana.showSkel);if(g)g.classList.toggle("on",!!ana.showGuides);}
@@ -1706,8 +1719,7 @@ $("anaTraceBtn").onclick=async()=>{
     if(withLm.length<3){prog.textContent="骨格を検出できませんでした（画角/明るさが原因かも）";}
     else{
       ana.pose=frames;ana.showSkel=true;ana.showGuides=true;updateOverlayTgl();
-      const wr=frames.filter(f=>f.lm&&f.lm[15]&&f.lm[16]).map(f=>({t:f.t,nx:(f.lm[15].x+f.lm[16].x)/2,ny:(f.lm[15].y+f.lm[16].y)/2,v:Math.min(f.lm[15].v,f.lm[16].v)})).filter(p=>p.v>0.3);
-      ana.trackPoints=smoothTraj(wr.map(p=>({t:p.t,nx:p.nx,ny:p.ny})));
+      ana.trackPoints=wristTrajFromPose(frames);
       prog.textContent="完了："+withLm.length+"／"+frames.length+"フレーム検出";
       anaTouch();
     }
