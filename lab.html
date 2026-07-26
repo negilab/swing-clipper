@@ -317,7 +317,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .ana-trace-row #anaTrajClear{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
 .ana-trace-row .ana-tgl{flex:0 0 auto;padding:8px 11px;font-size:11px;border-radius:9px;color:var(--muted);}
 .ana-trace-row .ana-tgl.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
-.ana-trace-row #anaShaftBtn{flex:0 0 auto;padding:9px 13px;font-size:12px;border-radius:10px;background:rgba(90,200,255,.16);color:#5ac8ff;border-color:rgba(90,200,255,.4);}
+.ana-trace-row #anaShaftBtn{flex:0 0 auto;padding:9px 12px;font-size:11px;border-radius:10px;background:rgba(90,200,255,.10);color:#5ac8ff;border-color:rgba(90,200,255,.3);}
+.ana-trace-row #anaSeedBtn{flex:0 0 auto;padding:9px 12px;font-size:12px;border-radius:10px;background:rgba(245,166,35,.16);color:#f5a623;border-color:rgba(245,166,35,.4);}
+.ana-trace-row #anaSeedBtn.arm{background:rgba(245,166,35,.4);color:#fff;}
+.ana-trace-row #anaTrackBtn{flex:0 0 auto;padding:9px 12px;font-size:12px;border-radius:10px;background:rgba(90,200,255,.16);color:#5ac8ff;border-color:rgba(90,200,255,.4);}
 .ana-trace-prog{font-size:11px;color:var(--muted);flex:1;min-width:120px;}
 .cmp-nodemenu-acts{display:flex;flex-direction:column;gap:8px;}
 .cmp-nodemenu-acts button{padding:13px;font-size:14px;border-radius:12px;}
@@ -459,7 +462,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="pbtn-row"><button class="play-pause" id="anaPlayBtn">▶</button><button class="speed-btn active" data-rate="1">1x</button><button class="speed-btn" data-rate="0.5">1/2</button><button class="speed-btn" data-rate="0.33">1/3</button><button class="speed-btn" data-rate="0.2">1/5</button><button class="speed-btn" data-rate="0.1">1/10</button></div>
     <div class="step-row"><span class="step-lbl">送り幅:</span><button class="step-btn active" data-step="0.05">1/20s</button><button class="step-btn" data-step="0.02">1/50s</button><button class="step-btn" data-step="0.01">1/100s</button><button class="step-btn" data-step="0.005">1/200s</button><button class="frame-nav" id="prevFrameBtn">◀</button><button class="frame-nav" id="nextFrameBtn">▶</button></div>
     <div class="ana-nodes"><div class="cmp-node-row" id="anaNodeRow"></div><div class="cmp-selbar" id="anaSelBar" style="display:none"><button class="cmp-jog" id="anaJogPrev">◀</button><button class="cmp-segchip on" id="anaSegChip">選択中 ✕</button><button class="cmp-jog" id="anaJogNext">▶</button></div><span class="cmp-sub-hint">節目=タップで選択（再生範囲/静止画送り）・長押しでマーク/削除</span></div>
-    <div class="ana-trace-row"><button id="anaTraceBtn">🦴 骨格＋軌跡を解析</button><button id="anaSkelTgl" class="ana-tgl on">骨格</button><button id="anaGuideTgl" class="ana-tgl on">基準線・角度</button><button id="anaShaftBtn">🏒 シャフト自動</button><button id="anaTrajClear">消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
+    <div class="ana-trace-row"><button id="anaTraceBtn">🦴 骨格＋軌跡を解析</button><button id="anaSkelTgl" class="ana-tgl on">骨格</button><button id="anaGuideTgl" class="ana-tgl on">基準線・角度</button><button id="anaShaftBtn">🏒 自動(A)</button><button id="anaSeedBtn">＋シャフト種</button><button id="anaTrackBtn">🏒 追尾で埋める</button><button id="anaTrajClear">消去</button><span class="ana-trace-prog" id="anaTraceProg"></span></div>
     <div class="ios-note hidden" id="iosNote">⚠ iOSは再生速度1/5以下が下限になる場合あり。1/50s・1/100s送りはスロー撮影動画(120/240fps)で有効です</div>
   </div>
   <div class="ana-tools hidden" id="anaTools">
@@ -647,7 +650,7 @@ els.preroll.oninput=()=>{els.prerollVal.textContent=(parseInt(els.preroll.value)
 // ===== 分析タブ =====
 const anaVideo=$("anaVideo"),anaCanvas=$("anaCanvas"),anaCtx2=anaCanvas.getContext("2d");
 const zoom={scale:1,tx:0,ty:0};
-const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],pose:null,shaft:null,showSkel:true,showGuides:true,drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
+const ana={tool:"cursor",color:"#ef4444",trackPoints:[],annotations:[],pose:null,shaft:null,shaftSeeds:[],seedArm:false,showSkel:true,showGuides:true,drawing:null,selectedIdx:-1,dragHandle:null,dragging:false,lastNx:0,lastNy:0};
 // ---- 端末内保存（IndexedDB）----
 const DBN="swingclipper_lab",ST="cmp";
 function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DBN,1);}catch(e){return rej(e);}r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
@@ -755,6 +758,11 @@ function startAnaRaf(){
           }
         }
       }
+    }
+    if(ana.shaftSeeds&&ana.shaftSeeds.length){
+      ctx.setLineDash([5,4]);ctx.lineWidth=1.6;ctx.strokeStyle="rgba(245,166,35,0.9)";
+      for(const sd of ana.shaftSeeds){const G=normToBase(sd.gx,sd.gy),H=normToBase(sd.hx,sd.hy);ctx.beginPath();ctx.moveTo(G.x,G.y);ctx.lineTo(H.x,H.y);ctx.stroke();ctx.beginPath();ctx.arc(H.x,H.y,3,0,Math.PI*2);ctx.fillStyle="#f5a623";ctx.fill();}
+      ctx.setLineDash([]);
     }
     if(ana.shaft&&ana.shaft.length){
       const Tt=anaVideo.currentTime;const seg=ana.shaft.filter(r=>r.hx!=null&&r.t<=Tt+0.001);
@@ -938,7 +946,10 @@ function endPointer(e){
     const b=getVideoBaseRect();let ok=false;
     if(ana.drawing.type==="line"){const dx=(ana.drawing.nx2-ana.drawing.nx1)*b.width,dy=(ana.drawing.ny2-ana.drawing.ny1)*b.height;ok=Math.hypot(dx,dy)>6;}
     else if(ana.drawing.type==="circle")ok=(ana.drawing.nr??0)*b.width>5;
-    if(ok)ana.annotations.push({...ana.drawing,color:ana.color});
+    if(ok){
+      if(ana.seedArm&&ana.drawing.type==="line"){ana.shaftSeeds.push({t:anaVideo.currentTime,gx:ana.drawing.nx1,gy:ana.drawing.ny1,hx:ana.drawing.nx2,hy:ana.drawing.ny2});ana.seedArm=false;updateSeedUI();}
+      else ana.annotations.push({...ana.drawing,color:ana.color});
+    }
     ana.drawing=null;
   }
   // タップ判定（カーソルツールで動いていない→選択 or パネル閉じ）
@@ -1755,7 +1766,24 @@ $("anaShaftBtn").onclick=async()=>{
   try{anaVideo.currentTime=keepT;}catch(e){}
   btn.disabled=false;anaTracing=false;
 };
-$("anaTrajClear").onclick=()=>{ana.trackPoints=[];ana.pose=null;ana.shaft=null;$("anaTraceProg").textContent="";anaTouch();};
+function updateSeedUI(){const n=ana.shaftSeeds.length;$("anaSeedBtn").classList.toggle("arm",ana.seedArm);$("anaTraceProg").textContent=ana.seedArm?"この画でグリップ→ヘッドの向きにシャフトを1本引いてください":("シャフト種: "+n+"コマ"+(n>=2?"（追尾で埋める を押す）":"（2コマ以上置く）"));}
+$("anaSeedBtn").onclick=()=>{ana.seedArm=!ana.seedArm;ana.tool="line";const seg=document.querySelector('#anaToolSeg [data-atool="line"]');if(seg){document.querySelectorAll('#anaToolSeg [data-atool]').forEach(x=>x.classList.remove("active"));seg.classList.add("active");}updateSeedUI();};
+$("anaTrackBtn").onclick=async()=>{
+  if(anaTracing)return;
+  if(!window.SC_trackShaft){$("anaTraceProg").textContent="読み込めていません";return;}
+  if(ana.shaftSeeds.length<2){$("anaTraceProg").textContent="先に「＋シャフト種」で2コマ以上シャフトを引いてください";return;}
+  anaTracing=true;const btn=$("anaTrackBtn"),prog=$("anaTraceProg");btn.disabled=true;prog.textContent="追尾中…";
+  const keepT=anaVideo.currentTime;anaVideo.pause();anaStopSeg();
+  try{
+    const ts=ana.shaftSeeds.map(s=>s.t);let t0=Math.min(...ts),t1=Math.max(...ts);
+    const r=anaRange();if(r){t0=r[0];t1=r[1];}
+    const frames=await window.SC_trackShaft(anaVideo,t0,t1,1/60,ana.shaftSeeds,(pr)=>{prog.textContent="追尾中 "+Math.round(pr*100)+"%";});
+    ana.shaft=frames;prog.textContent="完了：追尾 "+frames.length+"フレーム（種"+ana.shaftSeeds.length+"コマから）";anaTouch();
+  }catch(e){prog.textContent="エラー："+((e&&e.message)||e);}
+  try{anaVideo.currentTime=keepT;}catch(e){}
+  btn.disabled=false;anaTracing=false;
+};
+$("anaTrajClear").onclick=()=>{ana.trackPoints=[];ana.pose=null;ana.shaft=null;ana.shaftSeeds=[];ana.seedArm=false;$("anaSeedBtn").classList.remove("arm");$("anaTraceProg").textContent="";anaTouch();};
 
 // ---- 起動 ----
 restoreClips();
@@ -1822,6 +1850,43 @@ function _findShaft(m,w,h,gx,gy,prevAng,thr){
   }
   return {ang:bestAng,reach:bestReach,score:bestScore};
 }
+window.SC_trackShaft=async function(video,t0,t1,step,seeds,onProgress){
+  seeds=seeds.slice().sort((a,b)=>a.t-b.t);
+  const off=document.createElement("canvas"),octx=off.getContext("2d",{willReadFrequently:true});
+  const span=Math.max(0.001,t1-t0),n=Math.min(240,Math.max(4,Math.round(span/step))),dt=span/n;
+  function interp(t){
+    if(t<=seeds[0].t)return seeds[0];
+    if(t>=seeds[seeds.length-1].t)return seeds[seeds.length-1];
+    for(let i=0;i<seeds.length-1;i++){const a=seeds[i],b=seeds[i+1];if(t>=a.t&&t<=b.t){const f=(t-a.t)/((b.t-a.t)||1);return {gx:a.gx+(b.gx-a.gx)*f,gy:a.gy+(b.gy-a.gy)*f,hx:a.hx+(b.hx-a.hx)*f,hy:a.hy+(b.hy-a.hy)*f};}}
+    return seeds[0];
+  }
+  const out=[];
+  for(let i=0;i<=n;i++){
+    const t=Math.min(t1,t0+i*dt);await seekTo(video,t);
+    const w=video.videoWidth||0,h=video.videoHeight||0;const pred=interp(t);const rec={t,gx:pred.gx,gy:pred.gy,hx:pred.hx,hy:pred.hy};
+    // 種に非常に近いコマは種そのものを使う
+    const near=seeds.find(sd=>Math.abs(sd.t-t)<dt*0.6);
+    if(near){rec.gx=near.gx;rec.gy=near.gy;rec.hx=near.hx;rec.hy=near.hy;}
+    else if(w&&h){
+      if(off.width!==w)off.width=w;if(off.height!==h)off.height=h;
+      octx.drawImage(video,0,0,w,h);
+      const m=_sobelMag(octx,w,h),thr=_thr(m);
+      const gpx=pred.gx*w,gpy=pred.gy*h,hpx=pred.hx*w,hpy=pred.hy*h;
+      const baseAng=Math.atan2(hpy-gpy,hpx-gpx),baseLen=Math.hypot(hpx-gpx,hpy-gpy)||1;
+      let best=null,bs=-1;
+      for(let da=-16;da<=16;da+=2)for(let dl=-0.2;dl<=0.2;dl+=0.05){
+        const a=baseAng+da*Math.PI/180,L=baseLen*(1+dl),nx=-Math.sin(a),ny=Math.cos(a);
+        let hits=0,cnt=0;
+        for(let r=8;r<L;r+=3){const px=gpx+Math.cos(a)*r,py=gpy+Math.sin(a)*r;if(px<1||py<1||px>=w-1||py>=h-1)break;cnt++;let hit=false;for(let o=-2;o<=2;o++){const sx=(px+nx*o)|0,sy=(py+ny*o)|0;if(sx>0&&sy>0&&sx<w&&sy<h&&m[sy*w+sx]>thr){hit=true;break;}}if(hit)hits++;}
+        const sc=cnt>0?hits/cnt:0;
+        if(sc>bs){bs=sc;best={a,L};}
+      }
+      if(best&&bs>0.55){rec.hx=(gpx+Math.cos(best.a)*best.L)/w;rec.hy=(gpy+Math.sin(best.a)*best.L)/h;}
+    }
+    out.push(rec);if(onProgress)onProgress((i+1)/(n+1));
+  }
+  return out;
+};
 window.SC_analyzeShaft=async function(video,t0,t1,step,onProgress){
   const lm=await ensureLM();
   const off=document.createElement("canvas"),octx=off.getContext("2d",{willReadFrequently:true});
