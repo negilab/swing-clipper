@@ -339,6 +339,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cmp-pick-item span{display:block;font-size:11px;color:var(--muted);padding:5px 7px;font-family:"JetBrains Mono",monospace;}
 @media (orientation:landscape){.cmp-stage{min-height:46vh;}.cmp-master{gap:6px;padding:7px 12px;}}
 @media (max-width:400px){.tab-btn{padding-left:13px;padding-right:13px;}}
+.data-btn{margin-left:10px;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;}
+.sc-modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:18px;}
+.sc-modal.hidden{display:none;}
+.sc-modal-panel{background:#12181c;border:1px solid var(--line);border-radius:16px;max-width:390px;width:100%;padding:16px;max-height:88vh;overflow:auto;}
+.sc-modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.sc-modal-head h3{font-size:15px;margin:0;color:var(--ink);}
+.sc-modal-head button{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;}
+.sc-modal-sec{margin-bottom:14px;}
+.sc-modal-lbl{font-size:12px;color:var(--muted);margin-bottom:7px;}
+.sc-modal-sec>button{display:block;width:100%;margin-bottom:7px;padding:11px;border-radius:10px;background:rgba(184,255,60,.12);color:var(--impact);border:1px solid rgba(184,255,60,.3);font-size:13px;font-weight:600;cursor:pointer;}
+.sc-modal-note{font-size:11px;color:var(--muted);line-height:1.55;margin:6px 0 0;}
+.sc-modal-busy{font-size:12px;color:var(--impact);margin-top:8px;min-height:16px;}
 </style>
 </head>
 <body>
@@ -350,7 +362,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.8</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.9</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -1632,10 +1644,99 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
 ["undoBtn","clearAllBtn","selDelBtn","fsUndoBtn","fsClearBtn","fsSelDelBtn"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",anaTouch);});
 document.querySelectorAll('.tab-btn[data-tab="ana"]').forEach(b=>b.addEventListener("click",restoreAna));
 
+// ---- データの書き出し／読み込み（.swingclip 独自形式：ヘッダ+メタJSON+動画バイナリを1ファイルに連結）----
+function scBuild(kind,entries,data){
+  const mb=[],blobs=[];
+  for(const e of entries){if(e.blob instanceof Blob){blobs.push(e.blob);mb.push({id:e.id,type:e.blob.type||"application/octet-stream",len:e.blob.size});}}
+  const manifest={magic:"swingclip",version:1,kind,data:data||{},blobs:mb};
+  const mjson=new TextEncoder().encode(JSON.stringify(manifest));
+  const head=new ArrayBuffer(8),dv=new DataView(head);
+  dv.setUint8(0,83);dv.setUint8(1,87);dv.setUint8(2,67);dv.setUint8(3,76);dv.setUint32(4,mjson.byteLength,true);
+  return new Blob([head,mjson,...blobs],{type:"application/octet-stream"});
+}
+function scParse(buf){
+  const dv=new DataView(buf);
+  if(!(dv.getUint8(0)===83&&dv.getUint8(1)===87&&dv.getUint8(2)===67&&dv.getUint8(3)===76))throw new Error("swingclipファイルではありません");
+  const mlen=dv.getUint32(4,true);
+  const manifest=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,8,mlen)));
+  let off=8+mlen;const blobsById={};
+  for(const b of (manifest.blobs||[])){blobsById[b.id]=new Blob([buf.slice(off,off+b.len)],{type:b.type});off+=b.len;}
+  return {manifest,blobsById};
+}
+function scDownload(blob,label){
+  const d=new Date(),p=x=>String(x).padStart(2,"0");
+  const ts=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`swingclip_${label}_${ts}.swingclip`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+function scBusy(t){const el=$("dataBusy");if(el)el.textContent=t||"";}
+const scMB=b=>(b/1048576).toFixed(1)+"MB";
+async function exportAna(){
+  scBusy("書き出し中…");
+  const v=await idbGet("anaVid");if(!v){scBusy("");alert("分析タブに保存された動画がありません");return;}
+  const blob=scBuild("single-ana",[{id:"anaVid",blob:v}],{anaMeta:await idbGet("anaMeta")||null});
+  scDownload(blob,"analysis");scBusy("書き出し完了（"+scMB(blob.size)+"）");
+}
+async function exportCmp(){
+  scBusy("書き出し中…");
+  const a=await idbGet("vidA"),b=await idbGet("vidB");if(!a&&!b){scBusy("");alert("比較タブに保存された動画がありません");return;}
+  const blob=scBuild("single-cmp",[{id:"vidA",blob:a},{id:"vidB",blob:b}],{meta:await idbGet("meta")||null});
+  scDownload(blob,"compare");scBusy("書き出し完了（"+scMB(blob.size)+"）");
+}
+async function exportBackup(){
+  scBusy("バックアップ作成中…");
+  const entries=[],data={};
+  const av=await idbGet("anaVid");if(av)entries.push({id:"anaVid",blob:av});data.anaMeta=await idbGet("anaMeta")||null;
+  const va=await idbGet("vidA");if(va)entries.push({id:"vidA",blob:va});
+  const vb=await idbGet("vidB");if(vb)entries.push({id:"vidB",blob:vb});data.meta=await idbGet("meta")||null;
+  const clips=await idbGet("clips")||[];data.clips=clips.map((c,i)=>{if(c.blob)entries.push({id:"clip:"+i,blob:c.blob});return {seq:c.seq,type:c.type,tl:c.tl,fname:c.fname};});
+  if(!entries.length){scBusy("");alert("保存されたデータがありません");return;}
+  const blob=scBuild("backup",entries,data);
+  scDownload(blob,"backup");scBusy("バックアップ完了（"+scMB(blob.size)+"）");
+}
+async function scImport(file){
+  scBusy("読み込み中…");
+  try{
+    const buf=await file.arrayBuffer();const {manifest,blobsById}=scParse(buf);
+    if(manifest.magic!=="swingclip")throw new Error("対応していないファイルです");
+    const d=manifest.data||{},kind=manifest.kind;
+    const msg=kind==="backup"?"全体を復元します（録画・分析・比較すべて置き換え）。よろしいですか？":kind==="single-cmp"?"比較タブを復元します（今の比較内容は置き換え）。よろしいですか？":"分析タブを復元します（今の分析内容は置き換え）。よろしいですか？";
+    if(!confirm(msg)){scBusy("");return;}
+    if(kind==="single-ana"||kind==="backup"){if(blobsById.anaVid)await idbSet("anaVid",blobsById.anaVid);if(d.anaMeta)await idbSet("anaMeta",d.anaMeta);}
+    if(kind==="single-cmp"||kind==="backup"){if(blobsById.vidA)await idbSet("vidA",blobsById.vidA);if(blobsById.vidB)await idbSet("vidB",blobsById.vidB);if(d.meta)await idbSet("meta",d.meta);}
+    if(kind==="backup"&&Array.isArray(d.clips)){const cl=d.clips.map((c,i)=>({...c,blob:blobsById["clip:"+i]})).filter(c=>c.blob);await idbSet("clips",cl);}
+    alert("読み込みました。画面を更新します。");location.reload();
+  }catch(err){scBusy("");alert("読み込みに失敗しました: "+((err&&err.message)||err));}
+}
+$("dataBtn").onclick=()=>{scBusy("");$("dataModal").classList.remove("hidden");};
+$("dataClose").onclick=()=>$("dataModal").classList.add("hidden");
+$("dataModal").addEventListener("click",e=>{if(e.target===$("dataModal"))$("dataModal").classList.add("hidden");});
+$("expAna").onclick=exportAna;$("expCmp").onclick=exportCmp;$("expAll").onclick=exportBackup;
+$("impBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=e=>{const f=e.target.files[0];if(f)scImport(f);e.target.value="";};
+
 // ---- 起動 ----
 restoreClips();
 checkSupport();
 if(window.self!==window.top){$("compatWarn").classList.remove("hidden");$("compatWarn").innerHTML="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。";}
 </script>
+<div class="sc-modal hidden" id="dataModal">
+  <div class="sc-modal-panel">
+    <div class="sc-modal-head"><h3>データの保存・読み込み</h3><button id="dataClose">✕</button></div>
+    <div class="sc-modal-sec">
+      <div class="sc-modal-lbl">書き出し（端末にファイル保存）</div>
+      <button id="expAna">📄 分析タブを書き出し</button>
+      <button id="expCmp">📄 比較タブを書き出し</button>
+      <button id="expAll">💾 全体をバックアップ</button>
+    </div>
+    <div class="sc-modal-sec">
+      <div class="sc-modal-lbl">読み込み（ファイルから復元）</div>
+      <button id="impBtn">📂 ファイルを選ぶ…</button>
+      <p class="sc-modal-note">書き出したファイル(.swingclip)を選ぶと復元します。読み込むと現在の内容は置き換わるので、心配な時は先に「全体をバックアップ」を。</p>
+    </div>
+    <div class="sc-modal-busy" id="dataBusy"></div>
+  </div>
+</div>
+<input type="file" id="importFile" accept=".swingclip,application/octet-stream" hidden>
 </body>
 </html>
