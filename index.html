@@ -362,7 +362,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.9</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.10</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -1708,12 +1708,15 @@ async function scImport(file){
     alert("読み込みました。画面を更新します。");location.reload();
   }catch(err){scBusy("");alert("読み込みに失敗しました: "+((err&&err.message)||err));}
 }
+function wireDataUI(){
 $("dataBtn").onclick=()=>{scBusy("");$("dataModal").classList.remove("hidden");};
 $("dataClose").onclick=()=>$("dataModal").classList.add("hidden");
 $("dataModal").addEventListener("click",e=>{if(e.target===$("dataModal"))$("dataModal").classList.add("hidden");});
 $("expAna").onclick=exportAna;$("expCmp").onclick=exportCmp;$("expAll").onclick=exportBackup;
 $("impBtn").onclick=()=>$("importFile").click();
 $("importFile").onchange=e=>{const f=e.target.files[0];if(f)scImport(f);e.target.value="";};
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",wireDataUI);else wireDataUI();
 
 // ---- 起動 ----
 restoreClips();
