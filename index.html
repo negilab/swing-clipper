@@ -362,7 +362,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.10</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.11</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -1557,7 +1557,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
     const release=id=>{P.delete(id);if(P.size===0)gest[side]=null;};
 
     cell.addEventListener("pointerdown",e=>{
-      if(cmp.view!=="split"||!cmp.loaded[side])return;
+      if(cmp.view!=="split"||!cmp.loaded[side]||cmp.drawOn)return;
       if(e.target.closest(".cell-bar"))return;
       // 新しい操作の1本目なら前回の指情報を捨てる（残留による暴発を防ぐ）
       if(e.isPrimary)P.clear();
