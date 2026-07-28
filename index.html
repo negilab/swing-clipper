@@ -362,7 +362,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.11</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.12</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -1666,8 +1666,14 @@ function scParse(buf){
 function scDownload(blob,label){
   const d=new Date(),p=x=>String(x).padStart(2,"0");
   const ts=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`swingclip_${label}_${ts}.swingclip`;
+  const def=`swingclip_${label}_${ts}`;
+  let name=prompt("ファイル名を入力してください（拡張子は自動で付きます）",def);
+  if(name===null){scBusy("キャンセルしました");return false;}
+  name=name.trim().replace(/[\/\\:*?"<>|]+/g,"_")||def;
+  if(!/\.swingclip$/i.test(name))name+=".swingclip";
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  return true;
 }
 function scBusy(t){const el=$("dataBusy");if(el)el.textContent=t||"";}
 const scMB=b=>(b/1048576).toFixed(1)+"MB";
@@ -1675,13 +1681,13 @@ async function exportAna(){
   scBusy("書き出し中…");
   const v=await idbGet("anaVid");if(!v){scBusy("");alert("分析タブに保存された動画がありません");return;}
   const blob=scBuild("single-ana",[{id:"anaVid",blob:v}],{anaMeta:await idbGet("anaMeta")||null});
-  scDownload(blob,"analysis");scBusy("書き出し完了（"+scMB(blob.size)+"）");
+  if(scDownload(blob,"analysis"))scBusy("書き出し完了（"+scMB(blob.size)+"）");
 }
 async function exportCmp(){
   scBusy("書き出し中…");
   const a=await idbGet("vidA"),b=await idbGet("vidB");if(!a&&!b){scBusy("");alert("比較タブに保存された動画がありません");return;}
   const blob=scBuild("single-cmp",[{id:"vidA",blob:a},{id:"vidB",blob:b}],{meta:await idbGet("meta")||null});
-  scDownload(blob,"compare");scBusy("書き出し完了（"+scMB(blob.size)+"）");
+  if(scDownload(blob,"compare"))scBusy("書き出し完了（"+scMB(blob.size)+"）");
 }
 async function exportBackup(){
   scBusy("バックアップ作成中…");
@@ -1692,7 +1698,7 @@ async function exportBackup(){
   const clips=await idbGet("clips")||[];data.clips=clips.map((c,i)=>{if(c.blob)entries.push({id:"clip:"+i,blob:c.blob});return {seq:c.seq,type:c.type,tl:c.tl,fname:c.fname};});
   if(!entries.length){scBusy("");alert("保存されたデータがありません");return;}
   const blob=scBuild("backup",entries,data);
-  scDownload(blob,"backup");scBusy("バックアップ完了（"+scMB(blob.size)+"）");
+  if(scDownload(blob,"backup"))scBusy("バックアップ完了（"+scMB(blob.size)+"）");
 }
 async function scImport(file){
   scBusy("読み込み中…");
