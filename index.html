@@ -115,8 +115,31 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .clip .acts .del{background:transparent;color:var(--muted);border-color:var(--line);flex:0 0 40px;}
 .empty-clips{color:var(--muted);font-size:13px;text-align:center;padding:26px 0 30px;line-height:1.6;}
 /* クリップ全画面プレーヤー */
-.player-modal{position:fixed;inset:0;z-index:300;background:#000;display:flex;align-items:center;justify-content:center;}
-.player-modal video{width:100%;height:100%;object-fit:contain;}
+.player-modal{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;}
+.player-modal.hidden{display:none;}
+.pv-top{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;gap:8px;}
+.pv-x{background:rgba(255,255,255,.12);border:none;color:#fff;font-size:16px;width:38px;height:38px;border-radius:10px;cursor:pointer;}
+.pv-title{color:#fff;font-size:14px;font-weight:600;}
+.pv-del{background:rgba(255,80,80,.18);border:1px solid rgba(255,80,80,.4);color:#ff9a9a;font-size:12px;padding:8px 12px;border-radius:10px;cursor:pointer;}
+.pv-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:pan-y;}
+.pv-stage video{max-width:100%;max-height:100%;object-fit:contain;}
+.pv-stage canvas{position:absolute;pointer-events:none;}
+.pv-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:none;color:#fff;font-size:30px;width:44px;height:64px;border-radius:12px;cursor:pointer;opacity:.7;}
+.pv-prev{left:6px;}.pv-next{right:6px;}
+.pv-scrub{display:flex;align-items:center;gap:10px;padding:8px 14px 2px;}
+.pv-scrub input{flex:1;}
+.pv-time{color:#9aa;font-size:12px;min-width:38px;text-align:right;}
+.pv-row{display:flex;gap:7px;align-items:center;padding:7px 12px;flex-wrap:wrap;justify-content:center;}
+.pv-play{background:rgba(184,255,60,.16);border:1px solid rgba(184,255,60,.4);color:var(--impact);font-size:16px;width:46px;height:40px;border-radius:10px;cursor:pointer;}
+.pv-sp,.pv-step{background:rgba(255,255,255,.08);border:1px solid var(--line);color:#cde;font-size:13px;padding:9px 13px;border-radius:10px;cursor:pointer;min-width:44px;}
+.pv-sp.active{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.pv-lbl,.pv-dhint{color:#9aa;font-size:12px;}
+.pv-range{color:#cde;font-size:12px;min-width:64px;text-align:center;}
+.pv-tbtn{background:rgba(255,255,255,.08);border:1px solid var(--line);color:#cde;font-size:12px;padding:8px 11px;border-radius:9px;cursor:pointer;}
+.pv-tbtn.on{background:rgba(184,255,60,.16);color:var(--impact);border-color:rgba(184,255,60,.4);}
+.pv-apply{background:rgba(245,166,35,.16);color:#f5a623;border-color:rgba(245,166,35,.4);}
+.pv-sbtn{background:rgba(90,200,255,.14);border:1px solid rgba(90,200,255,.4);color:#5ac8ff;font-size:12px;padding:9px 12px;border-radius:10px;cursor:pointer;}
+.pv-send{border-top:1px solid rgba(255,255,255,.06);margin-top:2px;padding-top:10px;}
 .player-close{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;padding:8px 16px;font-size:14px;font-weight:600;z-index:301;flex:none;}
 /* 分析タブ */
 .ana-upload{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px 20px;}
@@ -369,12 +392,49 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 <!-- クリップ全画面プレーヤー -->
 <div class="player-modal hidden" id="playerModal">
-  <video id="playerVideo" playsinline controls></video>
-  <button class="player-close" id="playerClose">✕ 閉じる</button>
+  <div class="pv-top">
+    <button class="pv-x" id="playerClose">✕</button>
+    <span class="pv-title" id="pvTitle">#0</span>
+    <button class="pv-del" id="pvDelete">🗑 削除</button>
+  </div>
+  <div class="pv-stage" id="pvStage">
+    <video id="playerVideo" playsinline muted loop></video>
+    <canvas id="pvCanvas"></canvas>
+    <button class="pv-nav pv-prev" id="pvPrev">‹</button>
+    <button class="pv-nav pv-next" id="pvNext">›</button>
+  </div>
+  <div class="pv-scrub"><input type="range" id="pvSeek" min="0" max="1000" value="0"><span class="pv-time" id="pvTime">0:00</span></div>
+  <div class="pv-row">
+    <button class="pv-play" id="pvPlay">⏸</button>
+    <button class="pv-sp" data-pvrate="1">1x</button>
+    <button class="pv-sp" data-pvrate="0.5">½</button>
+    <button class="pv-sp" data-pvrate="0.25">¼</button>
+    <button class="pv-step" id="pvStepB">◀</button>
+    <button class="pv-step" id="pvStepF">▶</button>
+  </div>
+  <div class="pv-row pv-trim">
+    <span class="pv-lbl">トリム</span>
+    <button class="pv-tbtn" id="pvSetIn">開始をここに</button>
+    <span class="pv-range" id="pvRange">全体</span>
+    <button class="pv-tbtn" id="pvSetOut">終了をここに</button>
+    <button class="pv-tbtn" id="pvTrimReset">戻す</button>
+    <button class="pv-tbtn pv-apply" id="pvTrimApply">トリム確定</button>
+  </div>
+  <div class="pv-row pv-draw">
+    <button class="pv-tbtn" id="pvDrawTgl">✏️ 線画</button>
+    <button class="pv-tbtn" id="pvDrawClear">線を消す</button>
+    <span class="pv-dhint" id="pvDrawHint"></span>
+  </div>
+  <div class="pv-row pv-send">
+    <button class="pv-sbtn" id="pvToAna">分析へ送る</button>
+    <button class="pv-sbtn" id="pvToCmpA">比較・自分へ</button>
+    <button class="pv-sbtn" id="pvToCmpB">比較・お手本へ</button>
+    <button class="pv-sbtn" id="pvSave">保存</button>
+  </div>
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.15</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.16</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -727,8 +787,46 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function captureClip(){if(recMode!=="idle"||!running)return;recMode="capturing";setRecStatus();els.flash.classList.remove("on");void els.flash.offsetWidth;els.flash.classList.add("on");const pr=collectPreroll();if(!mime)mime=pickMime();let recorder,chunks=[];try{const rs=rC.captureStream(POST_FPS);recorder=new MediaRecorder(rs,mime?{mimeType:mime}:undefined);}catch(e){alert("録画エラー:"+e.message);recMode="idle";setRecStatus();return;}recorder.ondataavailable=ev=>{if(ev.data&&ev.data.size>0)chunks.push(ev.data);};const done=new Promise(res=>{recorder.onstop=()=>res();});recorder.start();for(const f of pr){rCtx.drawImage(f.canvas,0,0);await wait(1000/BUF_FPS);}const pe=performance.now()+POST_MS;while(performance.now()<pe&&running){rCtx.drawImage(els.video,0,0,rC.width,rC.height);await wait(1000/POST_FPS);}recorder.stop();await done;const type=mime||(chunks[0]&&chunks[0].type)||"video/webm";const blob=new Blob(chunks,{type});addClip(blob,type);cooldownUntil=performance.now()+COOLDOWN_MS;motionSmooth=0;prevData=null;recMode="idle";setRecStatus();}
 
 // クリップ全画面プレーヤー
-$("playerClose").onclick=()=>{$("playerModal").classList.add("hidden");$("playerVideo").pause();$("playerVideo").src="";};
-function openPlayer(url){$("playerVideo").src=url;$("playerModal").classList.remove("hidden");$("playerVideo").play().catch(()=>{});}
+// ===== クリップ精査ビューア（ループ既定・スロー・コマ送り・トリム・線画・フリック・送り出し）=====
+let pvIdx=-1,pvRate=1,pvDur=0,pvIn=0,pvOut=0,pvDrawOn=false,pvDrawing=null,pvStrokes=[],pvSwipeX=null,pvSwipeY=null;
+function pvFmt(s){s=s||0;const m=Math.floor(s/60);return m+":"+String(Math.floor(s%60)).padStart(2,"0");}
+function pvClose(){$("playerModal").classList.add("hidden");const v=$("playerVideo");try{v.pause();}catch(e){}v.removeAttribute("src");try{v.load();}catch(e){}pvIdx=-1;}
+function pvSetRateUI(){document.querySelectorAll("[data-pvrate]").forEach(b=>b.classList.toggle("active",parseFloat(b.dataset.pvrate)===pvRate));}
+function pvUpdateRange(){$("pvRange").textContent=(pvIn<=0&&pvOut>=pvDur-0.05)?"全体":(pvIn.toFixed(1)+"–"+pvOut.toFixed(1)+"s");}
+function pvBaseRect(){const v=$("playerVideo"),cv=$("pvCanvas"),st=$("pvStage"),sr=st.getBoundingClientRect();if(cv.width!==Math.round(sr.width))cv.width=Math.round(sr.width);if(cv.height!==Math.round(sr.height))cv.height=Math.round(sr.height);const vw=v.videoWidth||16,vh=v.videoHeight||9,sc=Math.min(sr.width/vw,sr.height/vh),w=vw*sc,h=vh*sc;return {left:(sr.width-w)/2,top:(sr.height-h)/2,width:w,height:h};}
+function pvDrawStrokes(){const cv=$("pvCanvas"),ctx=cv.getContext("2d"),b=pvBaseRect();ctx.clearRect(0,0,cv.width,cv.height);ctx.strokeStyle="#ef4444";ctx.lineWidth=2.5;ctx.lineCap="round";const all=pvDrawing?pvStrokes.concat([pvDrawing]):pvStrokes;for(const s of all){ctx.beginPath();ctx.moveTo(b.left+s.nx1*b.width,b.top+s.ny1*b.height);ctx.lineTo(b.left+s.nx2*b.width,b.top+s.ny2*b.height);ctx.stroke();}}
+function pvTick(){if($("playerModal").classList.contains("hidden"))return;const v=$("playerVideo");if(v.duration){if(pvIn>0||pvOut<pvDur-0.05){if(v.currentTime>=pvOut-0.01||v.currentTime<pvIn-0.05){try{v.currentTime=pvIn;}catch(e){}}}$("pvSeek").value=Math.round((v.currentTime/v.duration)*1000);$("pvTime").textContent=pvFmt(v.currentTime)+" / "+pvFmt(v.duration);}pvDrawStrokes();requestAnimationFrame(pvTick);}
+function pvLoad(){const c=clipStore[pvIdx];if(!c){pvClose();return;}const v=$("playerVideo");v.src=c.url;v.loop=true;v.playbackRate=pvRate;v.muted=true;pvStrokes=[];pvDrawing=null;$("pvTitle").textContent="#"+c.seq+"  ("+(pvIdx+1)+"/"+clipStore.length+")";v.onloadedmetadata=()=>{pvDur=v.duration||0;pvIn=0;pvOut=pvDur;pvUpdateRange();};try{v.currentTime=0;}catch(e){}v.play().catch(()=>{});$("pvPlay").textContent="⏸";pvSetRateUI();$("pvPrev").style.visibility=pvIdx>0?"visible":"hidden";$("pvNext").style.visibility=pvIdx<clipStore.length-1?"visible":"hidden";}
+function pvOpen(idx){if(idx<0||idx>=clipStore.length)return;pvIdx=idx;pvDrawOn=false;$("pvDrawTgl").classList.remove("on");$("pvDrawHint").textContent="";$("playerModal").classList.remove("hidden");pvLoad();requestAnimationFrame(pvTick);}
+function pvGo(delta){const n=clipStore.length;if(!n)return;let i=pvIdx+delta;if(i<0)i=0;if(i>=n)i=n-1;if(i!==pvIdx){pvIdx=i;pvLoad();}}
+function pvRebuildGrid(){els.grid.innerHTML="";clipStore.forEach(c=>mountClip(c));}
+function pvDelete(){const c=clipStore[pvIdx];if(!c)return;if(!confirm("このクリップを削除しますか？"))return;try{URL.revokeObjectURL(c.url);}catch(e){}clipStore.splice(pvIdx,1);pvRebuildGrid();refreshClipUI();saveClips();if(!clipStore.length){pvClose();return;}if(pvIdx>=clipStore.length)pvIdx=clipStore.length-1;pvLoad();}
+async function pvTrimApply(){const c=clipStore[pvIdx];if(!c)return;if(pvIn<=0&&pvOut>=pvDur-0.05){$("pvDrawHint").textContent="範囲が全体です";return;}const v=$("playerVideo");v.pause();const vw=v.videoWidth,vh=v.videoHeight,sc=Math.min(1,TARGET_MAX_DIM/Math.max(vw,vh));rC.width=Math.round(vw*sc);rC.height=Math.round(vh*sc);if(!mime)mime=pickMime();$("pvTrimApply").disabled=true;$("pvDrawHint").textContent="トリム中…";const wasLoop=v.loop;v.loop=false;await scanSeek(v,pvIn);let recorder;const chunks=[];try{const rs=rC.captureStream(POST_FPS);recorder=new MediaRecorder(rs,mime?{mimeType:mime}:undefined);}catch(e){$("pvDrawHint").textContent="この端末では切り出せません";v.loop=wasLoop;$("pvTrimApply").disabled=false;return;}recorder.ondataavailable=ev=>{if(ev.data&&ev.data.size>0)chunks.push(ev.data);};const done=new Promise(res=>recorder.onstop=()=>res());recorder.start();await v.play().catch(()=>{});const endT=pvOut;await new Promise(res=>{const tick=()=>{rCtx.drawImage(v,0,0,rC.width,rC.height);if(v.currentTime>=endT||v.ended){res();return;}requestAnimationFrame(tick);};requestAnimationFrame(tick);});v.pause();recorder.stop();await done;const type=mime||"video/webm",blob=new Blob(chunks,{type});try{URL.revokeObjectURL(c.url);}catch(e){}c.blob=blob;c.type=type;c.url=URL.createObjectURL(blob);pvRebuildGrid();saveClips();$("pvTrimApply").disabled=false;$("pvDrawHint").textContent="トリムしました";v.loop=true;pvLoad();}
+function pvXY(e){const st=$("pvStage").getBoundingClientRect(),b=pvBaseRect();return {nx:(e.clientX-st.left-b.left)/b.width,ny:(e.clientY-st.top-b.top)/b.height};}
+(()=>{const st=$("pvStage");
+st.addEventListener("pointerdown",e=>{if(pvDrawOn){const p=pvXY(e);pvDrawing={nx1:p.nx,ny1:p.ny,nx2:p.nx,ny2:p.ny};try{st.setPointerCapture(e.pointerId);}catch(err){}}else{pvSwipeX=e.clientX;pvSwipeY=e.clientY;}});
+st.addEventListener("pointermove",e=>{if(pvDrawOn&&pvDrawing){const p=pvXY(e);pvDrawing.nx2=p.nx;pvDrawing.ny2=p.ny;}});
+st.addEventListener("pointerup",e=>{if(pvDrawOn){if(pvDrawing){const dx=pvDrawing.nx2-pvDrawing.nx1,dy=pvDrawing.ny2-pvDrawing.ny1;if(Math.hypot(dx,dy)>0.012)pvStrokes.push(pvDrawing);pvDrawing=null;}return;}if(pvSwipeX==null)return;const dx=e.clientX-pvSwipeX,dy=e.clientY-pvSwipeY;pvSwipeX=null;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)pvGo(dx<0?1:-1);});
+})();
+$("playerClose").onclick=pvClose;
+$("pvPrev").onclick=()=>pvGo(-1);$("pvNext").onclick=()=>pvGo(1);
+$("pvPlay").onclick=()=>{const v=$("playerVideo");if(v.paused){v.play().catch(()=>{});$("pvPlay").textContent="⏸";}else{v.pause();$("pvPlay").textContent="▶";}};
+document.querySelectorAll("[data-pvrate]").forEach(b=>b.onclick=()=>{pvRate=parseFloat(b.dataset.pvrate);$("playerVideo").playbackRate=pvRate;pvSetRateUI();});
+$("pvStepB").onclick=()=>{const v=$("playerVideo");v.pause();$("pvPlay").textContent="▶";try{v.currentTime=Math.max(0,v.currentTime-1/30);}catch(e){}};
+$("pvStepF").onclick=()=>{const v=$("playerVideo");v.pause();$("pvPlay").textContent="▶";try{v.currentTime=Math.min(pvDur||v.duration||0,v.currentTime+1/30);}catch(e){}};
+$("pvSeek").oninput=()=>{const v=$("playerVideo");if(v.duration)try{v.currentTime=(+$("pvSeek").value/1000)*v.duration;}catch(e){}};
+$("pvSetIn").onclick=()=>{const v=$("playerVideo");pvIn=Math.min(v.currentTime,pvOut-0.1);if(pvIn<0)pvIn=0;pvUpdateRange();};
+$("pvSetOut").onclick=()=>{const v=$("playerVideo");pvOut=Math.max(v.currentTime,pvIn+0.1);if(pvOut>pvDur)pvOut=pvDur;pvUpdateRange();};
+$("pvTrimReset").onclick=()=>{pvIn=0;pvOut=pvDur;pvUpdateRange();$("pvDrawHint").textContent="";};
+$("pvTrimApply").onclick=pvTrimApply;
+$("pvDrawTgl").onclick=()=>{pvDrawOn=!pvDrawOn;$("pvDrawTgl").classList.toggle("on",pvDrawOn);$("pvDrawHint").textContent=pvDrawOn?"指で線を引けます（左右スワイプ移動は一時オフ）":"";};
+$("pvDrawClear").onclick=()=>{pvStrokes=[];pvDrawing=null;};
+$("pvDelete").onclick=pvDelete;
+function pvSwitchTab(name){document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));["rec","ana","cmp"].forEach(t=>$("pane-"+t).classList.toggle("hidden",t!==name));}
+$("pvToAna").onclick=()=>{const c=clipStore[pvIdx];if(!c)return;loadAnaBlob(c.blob);pvClose();pvSwitchTab("ana");};
+$("pvToCmpA").onclick=()=>{const c=clipStore[pvIdx];if(!c||!window.SC_loadCompare)return;window.SC_loadCompare("A",c.blob);pvClose();pvSwitchTab("cmp");};
+$("pvToCmpB").onclick=()=>{const c=clipStore[pvIdx];if(!c||!window.SC_loadCompare)return;window.SC_loadCompare("B",c.blob);pvClose();pvSwitchTab("cmp");};
+$("pvSave").onclick=()=>{const c=clipStore[pvIdx];if(!c)return;saveClip(c.blob,c.fname,c.type);};
 
 let clipSeq=0;const clipStore=[];
 function saveClips(){idbSet("clips",clipStore.map(c=>({seq:c.seq,type:c.type,tl:c.tl,fname:c.fname,blob:c.blob})));}
@@ -746,7 +844,7 @@ function mountClip(c){const{url,blob,type,fname,tl}=c;const sk=Math.round(blob.s
   thumb.appendChild(thumbC);
   thumb.innerHTML+=`<div class="play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.4)"/><path d="M10 8l6 4-6 4z" fill="#fff"/></svg></div>`;
   // タップで全画面再生
-  thumb.onclick=()=>openPlayer(url);
+  thumb.onclick=()=>pvOpen(clipStore.indexOf(c));
   card.querySelector(".save").onclick=e=>{e.stopPropagation();saveClip(blob,fname,type);};
   card.querySelector(".analyze").onclick=e=>{e.stopPropagation();loadAnaBlob(blob);document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab==="ana"));$("pane-rec").classList.add("hidden");$("pane-ana").classList.remove("hidden");};
   card.querySelector(".del").onclick=e=>{e.stopPropagation();URL.revokeObjectURL(url);card.remove();const si=clipStore.findIndex(x=>x.url===url);if(si>=0)clipStore.splice(si,1);refreshClipUI();saveClips();};
@@ -1177,6 +1275,7 @@ document.querySelectorAll(".fs-step").forEach(b=>{b.onclick=()=>{stepSize=parseF
   }
   function saveVid(side){if(cmp.blob[side])idbSet(side==="A"?"vidA":"vidB",cmp.blob[side]);}
   function saveMeta(){idbSet("meta",{marks:cmp.marks,ann:cmp.ann,offset:cmp.offset,view:cmp.view});}
+  window.SC_loadCompare=(side,blob)=>{loadSide(side,blob);};
 
   function loadSide(side,blob,keep){
     if(cmp.src[side]){try{URL.revokeObjectURL(cmp.src[side]);}catch(e){}}
