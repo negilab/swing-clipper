@@ -362,7 +362,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.12</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.13</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -382,6 +382,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   </div>
   <div class="controls">
     <div class="row"><button class="btn-primary" id="startBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>カメラを開始</button><button class="btn-cap" id="flipBtn" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>切替</button></div>
+    <div class="row"><button class="btn-cap" id="fileScanBtn">🎞 動画ファイルから検知</button><input type="file" id="fileScanInput" accept="video/*" hidden></div>
     <div class="row"><button class="btn-cap" id="manualBtn" disabled><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></svg>今のスイングを切り出す</button><button class="btn-stop hidden" id="stopBtn">停止</button></div>
     <div class="opts"><div class="toggle on" id="autoToggle"><span class="switch"></span><span>自動検知</span></div><div class="slider-wrap"><label>感度</label><input type="range" id="sens" min="1" max="10" value="6"><span class="val" id="sensVal">6</span></div></div>
     <div class="opts"><div class="slider-wrap"><label>巻き戻し</label><input type="range" id="preroll" min="15" max="38" value="26"><span class="val" id="prerollVal">2.6s</span></div></div>
@@ -595,8 +596,8 @@ document.querySelectorAll(".tab-btn").forEach(b=>{b.onclick=()=>{document.queryS
 
 // ===== 録画タブ =====
 const TARGET_MAX_DIM=540,BUF_FPS=18,POST_MS=1500,POST_FPS=25,COOLDOWN_MS=1500,MAX_CLIPS=12;
-const els={stage:$("stage"),video:$("video"),status:$("status"),statusText:$("statusText"),cd:$("cd"),gauge:$("gauge"),gaugeFill:$("gaugeFill"),gaugeMark:$("gaugeMark"),flash:$("flash"),startBtn:$("startBtn"),flipBtn:$("flipBtn"),manualBtn:$("manualBtn"),stopBtn:$("stopBtn"),autoToggle:$("autoToggle"),sens:$("sens"),sensVal:$("sensVal"),preroll:$("preroll"),prerollVal:$("prerollVal"),grid:$("grid"),emptyClips:$("emptyClips"),clipCount:$("clipCount"),liveDot:$("liveDot"),compatWarn:$("compatWarn")};
-let stream=null,running=false,facing="environment",recMode="idle",autoDetect=true,cooldownUntil=0,rafId=null;
+const els={stage:$("stage"),video:$("video"),status:$("status"),statusText:$("statusText"),cd:$("cd"),gauge:$("gauge"),gaugeFill:$("gaugeFill"),gaugeMark:$("gaugeMark"),flash:$("flash"),startBtn:$("startBtn"),flipBtn:$("flipBtn"),manualBtn:$("manualBtn"),stopBtn:$("stopBtn"),autoToggle:$("autoToggle"),sens:$("sens"),sensVal:$("sensVal"),preroll:$("preroll"),prerollVal:$("prerollVal"),grid:$("grid"),emptyClips:$("emptyClips"),clipCount:$("clipCount"),liveDot:$("liveDot"),compatWarn:$("compatWarn"),fileScanBtn:$("fileScanBtn"),fileScanInput:$("fileScanInput")};
+let stream=null,running=false,facing="environment",recMode="idle",autoDetect=true,cooldownUntil=0,rafId=null,scanning=false,scanCount0=0;
 const aC=document.createElement("canvas");aC.width=80;aC.height=60;const aCtx=aC.getContext("2d",{willReadFrequently:true});
 let prevData=null,motion=0,motionSmooth=0;
 const rC=document.createElement("canvas");const rCtx=rC.getContext("2d");
@@ -604,7 +605,41 @@ let buf=[],bufLen=0,bufHead=0,lastBufT=0,mime="";
 const PREROLL_MS=()=>parseInt(els.preroll.value)*100;
 function checkSupport(){const issues=[];if(!navigator.mediaDevices?.getUserMedia)issues.push("getUserMedia");if(typeof MediaRecorder==="undefined")issues.push("MediaRecorder");if(!document.createElement("canvas").captureStream)issues.push("captureStream");if(issues.length){els.compatWarn.classList.remove("hidden");els.compatWarn.innerHTML="非対応機能：<b>"+issues.join("・")+"</b>";}}
 function pickMime(){const c=["video/mp4","video/mp4;codecs=avc1","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];for(const m of c){if(MediaRecorder.isTypeSupported?.(m))return m;}return"";}
-async function startCamera(){try{if(stream)stream.getTracks().forEach(t=>t.stop());stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:false});els.video.srcObject=stream;await els.video.play();await new Promise(r=>{if(els.video.videoWidth)r();else els.video.onloadedmetadata=()=>r();});setupRec();running=true;recMode="idle";cooldownUntil=0;els.stage.classList.remove("empty");els.gauge.classList.remove("empty");els.liveDot.classList.add("live");els.startBtn.classList.add("hidden");els.stopBtn.classList.remove("hidden");els.flipBtn.disabled=false;els.manualBtn.disabled=false;setRecStatus();recLoop();}catch(e){let h="";if(window.self!==window.top)h="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。";else if(!window.isSecureContext)h="HTTPSが必要です。";else if(e.name==="NotAllowedError")h="カメラが拒否されています。";else h=e.message;els.compatWarn.classList.remove("hidden");els.compatWarn.textContent="カメラエラー:"+h;}}
+async function startCamera(){try{if(stream)stream.getTracks().forEach(t=>t.stop());stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:false});scanning=false;els.video.removeAttribute("src");els.video.srcObject=stream;els.video.muted=true;els.video.loop=false;els.fileScanBtn.disabled=false;await els.video.play();await new Promise(r=>{if(els.video.videoWidth)r();else els.video.onloadedmetadata=()=>r();});setupRec();running=true;recMode="idle";cooldownUntil=0;els.stage.classList.remove("empty");els.gauge.classList.remove("empty");els.liveDot.classList.add("live");els.startBtn.classList.add("hidden");els.stopBtn.classList.remove("hidden");els.flipBtn.disabled=false;els.manualBtn.disabled=false;setRecStatus();recLoop();}catch(e){let h="";if(window.self!==window.top)h="プレビュー枠ではカメラ使用不可。HTMLをHTTPSで開いてください。";else if(!window.isSecureContext)h="HTTPSが必要です。";else if(e.name==="NotAllowedError")h="カメラが拒否されています。";else h=e.message;els.compatWarn.classList.remove("hidden");els.compatWarn.textContent="カメラエラー:"+h;}}
+async function startFileScan(file){
+  els.compatWarn.classList.add("hidden");
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  if(rafId)cancelAnimationFrame(rafId);
+  const url=URL.createObjectURL(file);
+  els.video.srcObject=null;els.video.removeAttribute("src");
+  els.video.src=url;els.video.muted=true;els.video.loop=false;els.video.playbackRate=1;els.video.load();
+  try{await new Promise((res,rej)=>{els.video.onloadedmetadata=()=>res();els.video.onerror=()=>rej(new Error("この動画は読み込めませんでした"));setTimeout(()=>rej(new Error("読み込みタイムアウト")),15000);});}
+  catch(err){els.compatWarn.classList.remove("hidden");els.compatWarn.textContent="読み込みエラー: "+err.message;return;}
+  scanning=true;setupRec();
+  running=true;recMode="idle";cooldownUntil=0;motionSmooth=0;prevData=null;
+  scanCount0=clipStore.length;
+  els.stage.classList.remove("empty");els.gauge.classList.remove("empty");els.liveDot.classList.add("live");
+  els.startBtn.classList.add("hidden");els.stopBtn.classList.remove("hidden");
+  els.flipBtn.disabled=true;els.manualBtn.disabled=true;els.fileScanBtn.disabled=true;
+  els.video.onended=()=>finishFileScan();
+  setRecStatus();
+  try{await els.video.play();}catch(e){}
+  recLoop();
+}
+function finishFileScan(){
+  if(!scanning)return;
+  scanning=false;running=false;recMode="idle";
+  if(rafId)cancelAnimationFrame(rafId);
+  try{els.video.pause();}catch(e){}
+  els.video.onended=null;els.video.removeAttribute("src");
+  els.liveDot.classList.remove("live");els.stage.classList.add("empty");els.gauge.classList.add("empty");
+  els.startBtn.classList.remove("hidden");els.stopBtn.classList.add("hidden");
+  els.flipBtn.disabled=true;els.manualBtn.disabled=true;els.fileScanBtn.disabled=false;
+  setRecStatus();
+  const found=clipStore.length-scanCount0;
+  els.compatWarn.classList.remove("hidden");
+  els.compatWarn.textContent=found>0?("解析完了："+found+"件のスイングを検出しました"):"解析完了：スイングを検出できませんでした（感度を上げて再試行してみてください）";
+}
 function stopCamera(){running=false;recMode="idle";if(rafId)cancelAnimationFrame(rafId);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;els.video.srcObject=null;els.stage.classList.add("empty");els.gauge.classList.add("empty");els.liveDot.classList.remove("live");els.startBtn.classList.remove("hidden");els.stopBtn.classList.add("hidden");els.flipBtn.disabled=true;els.manualBtn.disabled=true;setRecStatus();}
 function setupRec(){const vw=els.video.videoWidth,vh=els.video.videoHeight;const sc=Math.min(1,TARGET_MAX_DIM/Math.max(vw,vh));rC.width=Math.round(vw*sc);rC.height=Math.round(vh*sc);const mf=Math.ceil(PREROLL_MS()/1000*BUF_FPS)+4;buf=[];for(let i=0;i<mf;i++){const c=document.createElement("canvas");c.width=rC.width;c.height=rC.height;buf.push({canvas:c,ctx:c.getContext("2d"),t:0});}bufLen=0;bufHead=0;lastBufT=0;prevData=null;}
 function recLoop(){if(!running)return;rafId=requestAnimationFrame(recLoop);if(recMode!=="idle")return;const now=performance.now();aCtx.drawImage(els.video,0,0,80,60);const cur=aCtx.getImageData(0,0,80,60).data;if(prevData){let d=0;for(let i=0;i<cur.length;i+=4)d+=Math.abs(cur[i]-prevData[i]);motion=Math.min(100,(d/(cur.length/4))*2.4);}prevData=cur;motionSmooth=motionSmooth*.55+motion*.45;els.gaugeFill.style.height=motionSmooth+"%";const s=parseInt(els.sens.value),thr=70-s*5.5;els.gaugeMark.style.bottom=thr+"%";if(now-lastBufT>=1000/BUF_FPS){const sl=buf[bufHead];sl.ctx.drawImage(els.video,0,0,rC.width,rC.height);sl.t=now;bufHead=(bufHead+1)%buf.length;bufLen=Math.min(bufLen+1,buf.length);lastBufT=now;}if(autoDetect&&now>cooldownUntil&&motionSmooth>thr)captureClip();}
@@ -639,9 +674,11 @@ function mountClip(c){const{url,blob,type,fname,tl}=c;const sk=Math.round(blob.s
   els.grid.prepend(card);while(els.grid.children.length>MAX_CLIPS)els.grid.lastElementChild.remove();while(clipStore.length>MAX_CLIPS)clipStore.shift();refreshClipUI();}
 function refreshClipUI(){const n=els.grid.children.length;els.clipCount.textContent=n;els.grid.classList.toggle("hidden",n===0);els.emptyClips.classList.toggle("hidden",n!==0);}
 async function saveClip(blob,fname,type){const file=new File([blob],fname,{type});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fname});return;}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
-function setRecStatus(){els.status.classList.remove("armed","rec");if(!running){els.statusText.textContent="停止中";els.cd.textContent="";return;}if(recMode==="capturing"){els.status.classList.add("rec");els.statusText.textContent="切り出し中";els.cd.textContent="";return;}if(autoDetect){els.status.classList.add("armed");els.statusText.textContent="検知待機";}else{els.statusText.textContent="手動モード";}els.cd.textContent="";}
+function setRecStatus(){els.status.classList.remove("armed","rec");if(!running){els.statusText.textContent="停止中";els.cd.textContent="";return;}if(recMode==="capturing"){els.status.classList.add("rec");els.statusText.textContent=scanning?"切り出し中(ファイル)":"切り出し中";els.cd.textContent="";return;}if(scanning){els.status.classList.add("armed");els.statusText.textContent="ファイル解析中…";els.cd.textContent="";return;}if(autoDetect){els.status.classList.add("armed");els.statusText.textContent="検知待機";}else{els.statusText.textContent="手動モード";}els.cd.textContent="";}
 setInterval(()=>{if(running&&recMode==="idle"){const l=cooldownUntil-performance.now();els.cd.textContent=l>0?(l/1000).toFixed(1)+"s":"";}},120);
-els.startBtn.onclick=startCamera;els.stopBtn.onclick=stopCamera;
+els.startBtn.onclick=startCamera;els.stopBtn.onclick=()=>{if(scanning)finishFileScan();else stopCamera();};
+els.fileScanBtn.onclick=()=>els.fileScanInput.click();
+els.fileScanInput.onchange=e=>{const f=e.target.files[0];if(f)startFileScan(f);e.target.value="";};
 els.flipBtn.onclick=async()=>{facing=facing==="environment"?"user":"environment";if(running)await startCamera();};
 els.manualBtn.onclick=()=>{if(running&&recMode==="idle")captureClip();};
 els.autoToggle.onclick=()=>{autoDetect=!autoDetect;els.autoToggle.classList.toggle("on",autoDetect);setRecStatus();};
