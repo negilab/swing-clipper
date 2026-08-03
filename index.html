@@ -374,7 +374,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 </div>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.14</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>Swing Clipper<span class="ver">v4.15</span><button class="data-btn" id="dataBtn" title="データの保存・読み込み">💾</button></div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="rec">録画</button>
     <button class="tab-btn" data-tab="ana">分析</button>
@@ -633,18 +633,22 @@ function scanSeek(v,t){return new Promise(res=>{const h=()=>{v.removeEventListen
 function scanReset(){scanReady=false;scanBusy=false;scanExtracting=false;scanTimeline=[];const pnl=$("scanPanel");if(pnl)pnl.classList.add("hidden");if(scanURL){try{URL.revokeObjectURL(scanURL);}catch(e){}}scanURL=null;scanBlob=null;els.video.removeAttribute("src");}
 function scanBuildTimeline(){
   return new Promise((resolve)=>{
-    const v=els.video,tl=[];let prev=null,lastT=-1;
+    const v=els.video,tl=[];let prev=null,lastT=-1,done=false;
     const A=document.createElement("canvas");A.width=80;A.height=60;const ac=A.getContext("2d",{willReadFrequently:true});
-    const dur=v.duration||0;
+    let dur=v.duration;if(!isFinite(dur)||dur<=0)dur=0;
     const sample=()=>{ac.drawImage(v,0,0,80,60);const cur=ac.getImageData(0,0,80,60).data;let m=0;if(prev){let d=0;for(let i=0;i<cur.length;i+=4)d+=Math.abs(cur[i]-prev[i]);m=Math.min(100,(d/(cur.length/4))*2.4);}prev=cur;return m;};
-    async function seekScan(){v.pause();const step=1/SCAN_FPS;for(let t=0;t<dur;t+=step){await scanSeek(v,t);tl.push({t,m:sample()});scanProg(dur?t/dur:0);}resolve(tl);}
+    const finish=()=>{if(done)return;done=true;clearInterval(wd);try{v.pause();}catch(e){}v.onended=null;resolve(tl);};
+    async function seekScan(){if(dur<=0){finish();return;}const step=1/SCAN_FPS;for(let t=0;t<dur&&!done;t+=step){await scanSeek(v,t);if(done)break;tl.push({t,m:sample()});scanProg(t/dur);}finish();}
+    // 監視タイマー：停止・終端・上限で確定（固まりを防ぐ）
+    let lastMt=-1,lastAdv=performance.now(),t0=performance.now();
+    const wd=setInterval(()=>{const mt=v.currentTime||0;if(mt>lastMt+0.02){lastMt=mt;lastAdv=performance.now();}if(dur>0&&mt>=dur-0.06)finish();else if(performance.now()-lastAdv>2800)finish();else if(performance.now()-t0>90000)finish();},300);
     if(v.requestVideoFrameCallback){
       v.muted=true;v.playbackRate=SCAN_RATE;
-      const onFrame=(now,meta)=>{const mt=meta.mediaTime;if(lastT<0||mt-lastT>=1/SCAN_FPS-1e-3){tl.push({t:mt,m:sample()});lastT=mt;scanProg(dur?mt/dur:0);}if(!v.ended)v.requestVideoFrameCallback(onFrame);};
-      v.onended=()=>{v.onended=null;resolve(tl);};
+      const onFrame=(now,meta)=>{if(done)return;const mt=meta.mediaTime;if(lastT<0||mt-lastT>=1/SCAN_FPS-1e-3){tl.push({t:mt,m:sample()});lastT=mt;scanProg(dur>0?mt/dur:Math.min(.99,tl.length/1200));}if(!v.ended)v.requestVideoFrameCallback(onFrame);};
+      v.onended=finish;
       try{v.currentTime=0;}catch(e){}
       v.requestVideoFrameCallback(onFrame);
-      v.play().catch(()=>{v.onended=null;seekScan();});
+      v.play().catch(()=>{if(!done)seekScan();});
     }else{seekScan();}
   });
 }
@@ -664,6 +668,7 @@ function scanUpdateCount(){
   const btn=$("scanExtractBtn");btn.disabled=n===0||scanExtracting;btn.textContent=n>0?("この設定で切り出す（"+n+"件）"):"検出なし";
 }
 async function scanLoadFile(file){
+  if(file&&file.size>180*1024*1024){if(!confirm("この動画は約"+Math.round(file.size/1048576)+"MBと大きく、スマホのブラウザでは解析中にメモリ不足でページが再読み込みされることがあります（アプリの不具合ではなく端末の制約です）。短く切った動画のほうが安定します。このまま試しますか？"))return;}
   scanReset();
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
   if(rafId)cancelAnimationFrame(rafId);running=false;recMode="idle";
